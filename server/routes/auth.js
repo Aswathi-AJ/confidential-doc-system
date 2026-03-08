@@ -1,6 +1,9 @@
+// auth.js
 const express = require("express");
 const argon2 = require("argon2");
 const db = require("../config/db");
+const jwt = require("jsonwebtoken");
+const verifyToken = require("../middleware/authMiddleware"); // make sure this exists
 
 const router = express.Router();
 
@@ -18,13 +21,10 @@ router.post("/register", async (req, res) => {
       }
       res.json({ message: "User registered successfully" });
     });
-
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-
-const jwt = require("jsonwebtoken");
 
 // Login
 router.post("/login", async (req, res) => {
@@ -32,22 +32,14 @@ router.post("/login", async (req, res) => {
 
   const sql = "SELECT * FROM users WHERE email = ?";
   db.query(sql, [email], async (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-
-    if (results.length === 0) {
-      return res.status(400).json({ message: "User not found" });
-    }
+    if (err) return res.status(500).json({ error: err.message });
+    if (results.length === 0) return res.status(400).json({ message: "User not found" });
 
     const user = results[0];
 
     try {
       const validPassword = await argon2.verify(user.password, password);
-
-      if (!validPassword) {
-        return res.status(400).json({ message: "Invalid password" });
-      }
+      if (!validPassword) return res.status(400).json({ message: "Invalid password" });
 
       const token = jwt.sign(
         { id: user.id, role: user.role },
@@ -59,10 +51,23 @@ router.post("/login", async (req, res) => {
         message: "Login successful",
         token
       });
-
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
+  });
+});
+
+// NEW: Get logged-in user info
+router.get("/me", verifyToken, (req, res) => {
+  // verifyToken middleware attaches user info to req.user
+  const userId = req.user.id;
+
+  const sql = "SELECT id, name, email, role FROM users WHERE id = ?";
+  db.query(sql, [userId], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (results.length === 0) return res.status(404).json({ message: "User not found" });
+
+    res.json(results[0]); // send user data to frontend
   });
 });
 

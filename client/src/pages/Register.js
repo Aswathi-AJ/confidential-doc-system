@@ -27,7 +27,7 @@ function Register() {
     try {
       await API.post("/auth/register", formData);
       alert("Registration Successful");
-      navigate("/login");
+      navigate("/");
     } catch {
       alert("Registration Failed");
     }

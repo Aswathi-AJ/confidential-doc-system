@@ -1,32 +1,32 @@
-import "./Dashboard.css";
+// Dashboard.js
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "./Dashboard.css";
 
 function Dashboard() {
-
   const navigate = useNavigate();
 
+  // Dummy user info for now
+  const [user, setUser] = useState({ name: "abcd", role: "admin" });
+
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
+    navigate("/"); // Redirect to login
   };
 
   return (
     <div className="dashboard-container">
+      <h2>Welcome, {user.name}</h2>
+      <p>Your role: {user.role}</p>
 
-      <div className="dashboard-header">
-        <h2>Dashboard</h2>
-        <button onClick={handleLogout}>Logout</button>
-      </div>
+      {user.role === "admin" && <button className="role-btn">Admin Panel</button>}
+      {user.role === "officer" && <p className="role-info">Officer Dashboard</p>}
+      {user.role === "viewer" && <p className="role-info">View Only</p>}
 
-      <div className="dashboard-content">
-        <h3>Welcome to Confidential Document System</h3>
+      <button className="upload-btn">Upload Document</button>
 
-        <div className="dashboard-actions">
-          <button>Upload Document</button>
-          <button>View Documents</button>
-        </div>
-      </div>
-
+      <button className="logout-btn" onClick={handleLogout}>
+        Logout
+      </button>
     </div>
   );
 }
