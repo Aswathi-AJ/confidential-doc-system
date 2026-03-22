@@ -21,6 +21,7 @@ function Login() {
 
     // Save token if backend sends it
     localStorage.setItem("token", response.data.token);
+    localStorage.setItem("user", JSON.stringify(response.data.user));
 
     // ✅ Redirect to dashboard
     navigate("/dashboard");
