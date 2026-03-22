@@ -7,12 +7,12 @@ const router = express.Router();
 // Register
 router.post("/register", async (req, res) => {
   const { name, email, password, role } = req.body;
-
+  const userRole = role || "viewer";
   try {
     const hashedPassword = await argon2.hash(password);
 
     const sql = "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)";
-    db.query(sql, [name, email, hashedPassword, role], (err, result) => {
+    db.query(sql, [name, email, hashedPassword, userRole], (err, result) => {
       if (err) {
         return res.status(500).json({ error: err.message });
       }
