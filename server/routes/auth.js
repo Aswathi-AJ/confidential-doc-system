@@ -7,7 +7,7 @@ const router = express.Router();
 // Register
 router.post("/register", async (req, res) => {
   const { name, email, password, role } = req.body;
-  const userRole = role || "viewer";
+  const userRole ="viewer";
   try {
     const hashedPassword = await argon2.hash(password);
 
