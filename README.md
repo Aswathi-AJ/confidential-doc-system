@@ -31,13 +31,10 @@ Security:
 
 ## Project Structure
 confidential-doc-system
-│
-├── client (React frontend)
-└── server (Node.js backend)
+- client (React frontend)
+- server (Node.js backend)
 
 
 ## Future Enhancements
 
-- Document listing API
-- Tamper detection testing
 - UI improvements
