@@ -1,0 +1,62 @@
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  height: 80px;                 /* 🔥 reduced from 80px */
+  padding: 0 20px;
+
+  background: #1c459e;          /* clean white */
+  border-bottom: 1px solid #eee;
+
+  color: #111;
+}
+
+/* Logo */
+.logo {
+  margin: 0;
+  font-size: 23px;
+  font-weight: 600;
+  color:#eee
+}
+
+/* ☰ icon */
+.menu-icon {
+  font-size: 20px;
+  cursor: pointer;
+  color: #eee;
+}
+
+/* Dropdown menu */
+.menu {
+  position: absolute;
+  top: 70px;
+  right: 20px;
+
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 10px;
+
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+
+  padding: 10px;
+  min-width: 160px;
+
+  z-index: 1000;
+}
+
+/* Menu items */
+.menu p {
+  margin: 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.menu p:hover {
+  color: #2563eb;
+}
+
+/* Logout */
+.logout {
+  color: red;
+}
