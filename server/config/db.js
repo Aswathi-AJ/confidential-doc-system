@@ -4,7 +4,7 @@ const db = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "0022",
-  database: "confidential_docs"
+  database: "gov_confidential_docs_sharing"
 });
 
 db.connect((err) => {

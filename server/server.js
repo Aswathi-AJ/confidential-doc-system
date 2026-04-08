@@ -3,7 +3,7 @@ const cors = require("cors");
 const db = require("./config/db");
 const authRoutes = require("./routes/auth");
 const documentRoutes = require("./routes/document");
-
+const userManagementRoutes = require("./routes/userManagement");
 const app = express();
 
 app.use(cors());
@@ -11,6 +11,7 @@ app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/document", documentRoutes);
+app.use("/api/admin", userManagementRoutes);
 app.get("/", (req, res) => {
   res.send("Server is running...");
 });
