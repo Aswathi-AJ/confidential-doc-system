@@ -135,4 +135,59 @@ const sendPasswordResetEmail = async (email, name, newPassword) => {
   }
 };
 
-module.exports = { sendWelcomeEmail, sendPasswordResetEmail };
+// Add this function to your existing mailer.js
+const sendPasswordResetLink = async (email, name, resetUrl) => {
+  const mailOptions = {
+    from: `"Confidential Document System" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Reset Your Password - Confidential Document System",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #1a3c34; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0;">Reset Your Password</h1>
+        </div>
+        
+        <div style="background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 8px 8px;">
+          <h2 style="color: #1a3c34;">Hello ${name},</h2>
+          
+          <p>We received a request to reset your password.</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" 
+               style="background-color: #1a5f7a; color: white; padding: 12px 30px; 
+                      text-decoration: none; border-radius: 6px; display: inline-block;
+                      font-weight: bold;">
+              Reset Your Password
+            </a>
+          </div>
+          
+          <p>This link will expire in <strong>1 hour</strong>.</p>
+          <p>If you didn't request this, please ignore this email.</p>
+          
+          <hr style="margin: 20px 0;">
+          <p style="color: #64748b; font-size: 12px; text-align: center;">
+            Confidential Document System<br>
+            Government of India | Secure Portal
+          </p>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log("Password reset link sent to:", email);
+    return true;
+  } catch (error) {
+    console.error("Reset email failed:", error.message);
+    return false;
+  }
+};
+
+
+module.exports = { 
+  sendWelcomeEmail, 
+  sendPasswordResetEmail, 
+  sendPasswordResetLink  
+};
+
