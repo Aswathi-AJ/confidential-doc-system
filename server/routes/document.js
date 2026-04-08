@@ -10,17 +10,7 @@ const router = express.Router();
 const logActivity = require("../utils/logger");
 const { normalizeToHex } = require("../utils/helper");
 
-const normalizeToHex = (value) => {
-  if (Buffer.isBuffer(value)) return value.toString("hex");
-  if (typeof value === "string") {
-    // If it's already a hex string, return as-is.
-    if (/^[0-9a-fA-F]+$/.test(value) && value.length % 2 === 0) {
-      return value;
-    }
-    return Buffer.from(value, "binary").toString("hex");
-  }
-  return value;
-};
+
 
 // Storage config
 const storage = multer.diskStorage({
