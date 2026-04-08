@@ -1,5 +1,5 @@
 const express = require("express");
-const bcrypt = require("bcryptjs");
+const argon2 = require("argon2");  // ✅ Use argon2, NOT bcrypt
 const verifyToken = require("../middleware/authMiddleware");
 const checkRole = require("../middleware/roleMiddleware");
 const db = require("../config/db");
@@ -20,6 +20,8 @@ router.get("/users", verifyToken, checkRole(["admin"]), (req, res) => {
 router.post("/users", verifyToken, checkRole(["admin"]), async (req, res) => {
   const { name, email, password, role } = req.body;
   
+  console.log("Creating user:", { name, email, role, passwordLength: password?.length });
+  
   if (!name || !email || !password) {
     return res.status(400).json({ message: "All fields are required" });
   }
@@ -31,6 +33,7 @@ router.post("/users", verifyToken, checkRole(["admin"]), async (req, res) => {
   }
   
   try {
+    // Check if user already exists
     const checkSql = "SELECT id FROM users WHERE email = ?";
     const checkResult = await new Promise((resolve, reject) => {
       db.query(checkSql, [email], (err, result) => {
@@ -43,7 +46,10 @@ router.post("/users", verifyToken, checkRole(["admin"]), async (req, res) => {
       return res.status(400).json({ message: "User with this email already exists" });
     }
     
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // ✅ Use argon2 to hash password (same as login)
+    const hashedPassword = await argon2.hash(password);
+    console.log("Password hashed successfully");
+    
     const sql = "INSERT INTO users (name, email, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())";
     
     db.query(sql, [name, email, hashedPassword, role], async (err, result) => {
@@ -52,6 +58,9 @@ router.post("/users", verifyToken, checkRole(["admin"]), async (req, res) => {
         return res.status(500).json({ message: "Failed to create user" });
       }
       
+      console.log("User created with ID:", result.insertId);
+      
+      // Send welcome email
       const emailSent = await sendWelcomeEmail(email, name, password, role);
       logActivity(req.user.id, "CREATE_USER", "SUCCESS", `Created user: ${email} with role: ${role}, Email sent: ${emailSent}`);
       
@@ -71,11 +80,14 @@ router.post("/users/:id/reset-password", verifyToken, checkRole(["admin"]), asyn
   const userId = req.params.id;
   const { password } = req.body;
   
+  console.log("Resetting password for user ID:", userId);
+  
   if (!password || password.length < 6) {
     return res.status(400).json({ message: "Password must be at least 6 characters" });
   }
   
   try {
+    // Get user details first
     const getUserSql = "SELECT name, email FROM users WHERE id = ?";
     const user = await new Promise((resolve, reject) => {
       db.query(getUserSql, [userId], (err, result) => {
@@ -86,7 +98,9 @@ router.post("/users/:id/reset-password", verifyToken, checkRole(["admin"]), asyn
     
     if (!user) return res.status(404).json({ message: "User not found" });
     
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // ✅ Use argon2 to hash password
+    const hashedPassword = await argon2.hash(password);
+    
     const sql = "UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?";
     
     db.query(sql, [hashedPassword, userId], async (err, result) => {

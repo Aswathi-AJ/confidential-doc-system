@@ -100,273 +100,306 @@ function Dashboard() {
   }[role] || { name: "User", icon: "👤", color: "#6b7280", bg: "#f3f4f6" };
 
   const styles = {
-    container: {
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-      fontFamily: "'Segoe UI', Roboto, sans-serif"
-    },
-    header: {
-      backgroundColor: "#1a3c34",
-      color: "white",
-      padding: isMobile ? "16px" : "20px 32px",
-      boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
-    },
-    headerContent: {
-      maxWidth: "1200px",
-      margin: "0 auto",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      flexWrap: "wrap",
-      gap: "16px"
-    },
-    logo: {
-      fontSize: isMobile ? "20px" : "24px",
-      fontWeight: "700"
-    },
-    logoSmall: {
-      fontSize: isMobile ? "12px" : "14px",
-      opacity: 0.8,
-      marginTop: "4px"
-    },
-    userInfo: {
-      display: "flex",
-      alignItems: "center",
-      gap: "16px",
-      flexWrap: "wrap"
-    },
-    userEmail: {
-      fontSize: isMobile ? "13px" : "14px"
-    },
-    roleBadge: {
-      padding: "6px 14px",
-      borderRadius: "20px",
-      fontSize: "12px",
-      fontWeight: "600",
-      backgroundColor: roleDisplay.bg,
-      color: roleDisplay.color,
-      display: "inline-flex",
-      alignItems: "center",
-      gap: "6px"
-    },
-    adminPanelBtn: {
-      backgroundColor: "#f59e0b",
-      border: "none",
-      padding: "8px 16px",
-      borderRadius: "8px",
-      color: "white",
-      cursor: "pointer",
-      fontSize: "14px",
-      fontWeight: "600",
-      transition: "all 0.3s"
-    },
-    logoutBtn: {
-      backgroundColor: "rgba(255,255,255,0.2)",
-      border: "none",
-      padding: "8px 16px",
-      borderRadius: "8px",
-      color: "white",
-      cursor: "pointer",
-      fontSize: "14px",
-      transition: "all 0.3s"
-    },
-    main: {
-      maxWidth: "1200px",
-      margin: "0 auto",
-      padding: isMobile ? "20px 16px" : "32px 24px"
-    },
-    welcomeSection: {
-      marginBottom: "32px"
-    },
-    welcomeTitle: {
-      fontSize: isMobile ? "24px" : "32px",
-      fontWeight: "700",
-      color: "#1a3c34",
-      marginBottom: "8px"
-    },
-    welcomeSubtitle: {
-      fontSize: isMobile ? "14px" : "16px",
-      color: "#4b5563"
-    },
-    statsGrid: {
-      display: "grid",
-      gridTemplateColumns: isMobile ? "1fr" : isTablet ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
-      gap: "16px",
-      marginBottom: "32px"
-    },
-    statCard: {
-      backgroundColor: "white",
-      padding: isMobile ? "20px" : "24px",
-      borderRadius: "16px",
-      textAlign: "center",
-      boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-      transition: "transform 0.3s, box-shadow 0.3s",
-      cursor: "pointer"
-    },
-    statIcon: {
-      fontSize: isMobile ? "28px" : "32px",
-      marginBottom: "12px"
-    },
-    statNumber: {
-      fontSize: isMobile ? "28px" : "36px",
-      fontWeight: "700",
-      color: "#1a5f7a",
-      marginBottom: "4px"
-    },
-    statLabel: {
-      fontSize: isMobile ? "13px" : "14px",
-      color: "#6b7280"
-    },
-    actionsGrid: {
-      display: "grid",
-      gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(250px, 1fr))",
-      gap: "20px",
-      marginBottom: "32px"
-    },
-    actionCard: {
-      backgroundColor: "white",
-      padding: isMobile ? "24px" : "28px",
-      borderRadius: "16px",
-      textAlign: "center",
-      boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-      transition: "all 0.3s",
-      cursor: "pointer"
-    },
-    actionIcon: {
-      fontSize: isMobile ? "40px" : "48px",
-      marginBottom: "16px"
-    },
-    actionTitle: {
-      fontSize: isMobile ? "18px" : "20px",
-      fontWeight: "600",
-      color: "#1f2937",
-      marginBottom: "8px"
-    },
-    actionDesc: {
-      fontSize: isMobile ? "12px" : "14px",
-      color: "#6b7280",
-      marginBottom: "16px"
-    },
-    actionBtn: {
-      backgroundColor: "#1a5f7a",
-      color: "white",
-      border: "none",
-      padding: "10px 20px",
-      borderRadius: "8px",
-      fontSize: "14px",
-      fontWeight: "500",
-      cursor: "pointer",
-      transition: "background 0.3s"
-    },
-    recentSection: {
-      backgroundColor: "white",
-      borderRadius: "16px",
-      padding: isMobile ? "20px" : "24px",
-      boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
-    },
-    sectionTitle: {
-      fontSize: isMobile ? "18px" : "20px",
-      fontWeight: "600",
-      color: "#1f2937",
-      marginBottom: "16px",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center"
-    },
-    viewAllLink: {
-      fontSize: "14px",
-      color: "#1a5f7a",
-      cursor: "pointer",
-      textDecoration: "none"
-    },
-    documentList: {
-      display: "flex",
-      flexDirection: "column",
-      gap: "12px"
-    },
-    documentItem: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "12px",
-      backgroundColor: "#f9fafb",
-      borderRadius: "10px",
-      transition: "background 0.3s"
-    },
-    documentInfo: {
-      display: "flex",
-      alignItems: "center",
-      gap: "12px",
-      flex: 1
-    },
-    documentIcon: {
-      fontSize: "24px"
-    },
-    documentName: {
-      fontSize: isMobile ? "13px" : "14px",
-      fontWeight: "500",
-      color: "#374151"
-    },
-    documentDate: {
-      fontSize: "11px",
-      color: "#9ca3af",
-      marginTop: "2px"
-    },
-    downloadIcon: {
-      backgroundColor: "#22c55e",
-      color: "white",
-      border: "none",
-      padding: "6px 12px",
-      borderRadius: "6px",
-      fontSize: "12px",
-      cursor: "pointer"
-    },
-    loadingState: {
-      textAlign: "center",
-      padding: "60px 20px",
-      color: "#6b7280"
-    },
-    modalOverlay: {
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.5)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 1000
-    },
-    confirmModal: {
-      backgroundColor: "white",
-      borderRadius: "16px",
-      padding: "24px",
-      width: "90%",
-      maxWidth: "400px",
-      textAlign: "center"
-    },
-    confirmButtons: {
-      display: "flex",
-      gap: "12px",
-      marginTop: "20px",
-      justifyContent: "center"
-    },
-    confirmBtn: {
-      padding: "10px 20px",
-      borderRadius: "8px",
-      border: "none",
-      cursor: "pointer",
-      fontSize: "14px"
-    },
-    emptyState: {
-      textAlign: "center",
-      padding: "40px",
-      backgroundColor: "white",
-      borderRadius: "16px",
-      color: "#6b7280"
-    }
-  };
+  container: {
+    minHeight: "100vh",
+    background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+    fontFamily: "'Segoe UI', Roboto, sans-serif"
+  },
+  header: {
+    backgroundColor: "#1a3c34",
+    color: "white",
+    paddingTop: isMobile ? "16px" : "20px",
+    paddingBottom: isMobile ? "16px" : "20px",
+    paddingLeft: isMobile ? "16px" : "32px",
+    paddingRight: isMobile ? "16px" : "32px",
+    boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
+  },
+  headerContent: {
+    maxWidth: "1200px",
+    margin: "0 auto",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "16px"
+  },
+  logo: {
+    fontSize: isMobile ? "20px" : "24px",
+    fontWeight: "700"
+  },
+  logoSmall: {
+    fontSize: isMobile ? "12px" : "14px",
+    opacity: 0.8,
+    marginTop: "4px"
+  },
+  userInfo: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    flexWrap: "wrap"
+  },
+  userEmail: {
+    fontSize: isMobile ? "13px" : "14px"
+  },
+  roleBadge: {
+    paddingTop: "6px",
+    paddingBottom: "6px",
+    paddingLeft: "14px",
+    paddingRight: "14px",
+    borderRadius: "20px",
+    fontSize: "12px",
+    fontWeight: "600",
+    backgroundColor: roleDisplay.bg,
+    color: roleDisplay.color,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px"
+  },
+  adminPanelBtn: {
+    backgroundColor: "#f59e0b",
+    border: "none",
+    paddingTop: "8px",
+    paddingBottom: "8px",
+    paddingLeft: "16px",
+    paddingRight: "16px",
+    borderRadius: "8px",
+    color: "white",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "600",
+    transition: "all 0.3s"
+  },
+  logoutBtn: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    border: "none",
+    paddingTop: "8px",
+    paddingBottom: "8px",
+    paddingLeft: "16px",
+    paddingRight: "16px",
+    borderRadius: "8px",
+    color: "white",
+    cursor: "pointer",
+    fontSize: "14px",
+    transition: "all 0.3s"
+  },
+  main: {
+    maxWidth: "1200px",
+    margin: "0 auto",
+    paddingTop: isMobile ? "20px" : "32px",
+    paddingBottom: isMobile ? "20px" : "32px",
+    paddingLeft: isMobile ? "16px" : "24px",
+    paddingRight: isMobile ? "16px" : "24px"
+  },
+  welcomeSection: {
+    marginBottom: "32px"
+  },
+  welcomeTitle: {
+    fontSize: isMobile ? "24px" : "32px",
+    fontWeight: "700",
+    color: "#1a3c34",
+    marginBottom: "8px"
+  },
+  welcomeSubtitle: {
+    fontSize: isMobile ? "14px" : "16px",
+    color: "#4b5563"
+  },
+  statsGrid: {
+    display: "grid",
+    gridTemplateColumns: isMobile ? "1fr" : isTablet ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+    gap: "16px",
+    marginBottom: "32px"
+  },
+  statCard: {
+    backgroundColor: "white",
+    paddingTop: isMobile ? "20px" : "24px",
+    paddingBottom: isMobile ? "20px" : "24px",
+    paddingLeft: isMobile ? "20px" : "24px",
+    paddingRight: isMobile ? "20px" : "24px",
+    borderRadius: "16px",
+    textAlign: "center",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+    transition: "transform 0.3s, box-shadow 0.3s",
+    cursor: "pointer"
+  },
+  statIcon: {
+    fontSize: isMobile ? "28px" : "32px",
+    marginBottom: "12px"
+  },
+  statNumber: {
+    fontSize: isMobile ? "28px" : "36px",
+    fontWeight: "700",
+    color: "#1a5f7a",
+    marginBottom: "4px"
+  },
+  statLabel: {
+    fontSize: isMobile ? "13px" : "14px",
+    color: "#6b7280"
+  },
+  actionsGrid: {
+    display: "grid",
+    gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(250px, 1fr))",
+    gap: "20px",
+    marginBottom: "32px"
+  },
+  actionCard: {
+    backgroundColor: "white",
+    paddingTop: isMobile ? "24px" : "28px",
+    paddingBottom: isMobile ? "24px" : "28px",
+    paddingLeft: isMobile ? "24px" : "28px",
+    paddingRight: isMobile ? "24px" : "28px",
+    borderRadius: "16px",
+    textAlign: "center",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+    transition: "all 0.3s",
+    cursor: "pointer"
+  },
+  actionIcon: {
+    fontSize: isMobile ? "40px" : "48px",
+    marginBottom: "16px"
+  },
+  actionTitle: {
+    fontSize: isMobile ? "18px" : "20px",
+    fontWeight: "600",
+    color: "#1f2937",
+    marginBottom: "8px"
+  },
+  actionDesc: {
+    fontSize: isMobile ? "12px" : "14px",
+    color: "#6b7280",
+    marginBottom: "16px"
+  },
+  actionBtn: {
+    backgroundColor: "#1a5f7a",
+    color: "white",
+    border: "none",
+    paddingTop: "10px",
+    paddingBottom: "10px",
+    paddingLeft: "20px",
+    paddingRight: "20px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    fontWeight: "500",
+    cursor: "pointer",
+    transition: "background 0.3s"
+  },
+  recentSection: {
+    backgroundColor: "white",
+    borderRadius: "16px",
+    paddingTop: isMobile ? "20px" : "24px",
+    paddingBottom: isMobile ? "20px" : "24px",
+    paddingLeft: isMobile ? "20px" : "24px",
+    paddingRight: isMobile ? "20px" : "24px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
+  },
+  sectionTitle: {
+    fontSize: isMobile ? "18px" : "20px",
+    fontWeight: "600",
+    color: "#1f2937",
+    marginBottom: "16px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center"
+  },
+  viewAllLink: {
+    fontSize: "14px",
+    color: "#1a5f7a",
+    cursor: "pointer",
+    textDecoration: "none"
+  },
+  documentList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px"
+  },
+  documentItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "12px",
+    backgroundColor: "#f9fafb",
+    borderRadius: "10px",
+    transition: "background 0.3s"
+  },
+  documentInfo: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    flex: 1
+  },
+  documentIcon: {
+    fontSize: "24px"
+  },
+  documentName: {
+    fontSize: isMobile ? "13px" : "14px",
+    fontWeight: "500",
+    color: "#374151"
+  },
+  documentDate: {
+    fontSize: "11px",
+    color: "#9ca3af",
+    marginTop: "2px"
+  },
+  downloadIcon: {
+    backgroundColor: "#22c55e",
+    color: "white",
+    border: "none",
+    paddingTop: "6px",
+    paddingBottom: "6px",
+    paddingLeft: "12px",
+    paddingRight: "12px",
+    borderRadius: "6px",
+    fontSize: "12px",
+    cursor: "pointer"
+  },
+  loadingState: {
+    textAlign: "center",
+    padding: "60px 20px",
+    color: "#6b7280"
+  },
+  modalOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000
+  },
+  confirmModal: {
+    backgroundColor: "white",
+    borderRadius: "16px",
+    padding: "24px",
+    width: "90%",
+    maxWidth: "400px",
+    textAlign: "center"
+  },
+  confirmButtons: {
+    display: "flex",
+    gap: "12px",
+    marginTop: "20px",
+    justifyContent: "center"
+  },
+  confirmBtn: {
+    paddingTop: "10px",
+    paddingBottom: "10px",
+    paddingLeft: "20px",
+    paddingRight: "20px",
+    borderRadius: "8px",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "14px"
+  },
+  emptyState: {
+    textAlign: "center",
+    padding: "40px",
+    backgroundColor: "white",
+    borderRadius: "16px",
+    color: "#6b7280"
+  }
+};
 
   if (loading) {
     return (

@@ -1,15 +1,31 @@
 const nodemailer = require("nodemailer");
 
-// Configure email transporter
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+// Create transporter ONCE and reuse it
+let transporter = null;
+
+const getTransporter = () => {
+  if (!transporter) {
+    console.log("Creating email transporter...");
+    console.log("EMAIL_USER:", process.env.EMAIL_USER);
+    console.log("EMAIL_PASS length:", process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0);
+    
+    transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
   }
-});
+  return transporter;
+};
 
 const sendWelcomeEmail = async (email, name, password, role) => {
+  console.log("Preparing welcome email for:", email);
+  
   const loginUrl = process.env.FRONTEND_URL || "http://localhost:3000/login";
   
   const roleDisplay = {
@@ -73,16 +89,19 @@ const sendWelcomeEmail = async (email, name, password, role) => {
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Welcome email sent to:", email);
+    const transporterInstance = getTransporter();
+    const info = await transporterInstance.sendMail(mailOptions);
+    console.log("Welcome email sent to:", email, "Message ID:", info.messageId);
     return true;
   } catch (error) {
-    console.error("Email sending failed:", error.message);
+    console.error("Welcome email failed:", error.message);
     return false;
   }
 };
 
 const sendPasswordResetEmail = async (email, name, newPassword) => {
+  console.log("Preparing password reset email for:", email);
+  
   const loginUrl = process.env.FRONTEND_URL || "http://localhost:3000/login";
 
   const mailOptions = {
@@ -126,8 +145,9 @@ const sendPasswordResetEmail = async (email, name, newPassword) => {
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Password reset email sent to:", email);
+    const transporterInstance = getTransporter();
+    const info = await transporterInstance.sendMail(mailOptions);
+    console.log("Password reset email sent to:", email, "Message ID:", info.messageId);
     return true;
   } catch (error) {
     console.error("Password reset email failed:", error.message);
@@ -135,8 +155,10 @@ const sendPasswordResetEmail = async (email, name, newPassword) => {
   }
 };
 
-// Add this function to your existing mailer.js
 const sendPasswordResetLink = async (email, name, resetUrl) => {
+  console.log("Preparing reset link email for:", email);
+  console.log("Reset URL:", resetUrl);
+  
   const mailOptions = {
     from: `"Confidential Document System" <${process.env.EMAIL_USER}>`,
     to: email,
@@ -175,19 +197,14 @@ const sendPasswordResetLink = async (email, name, resetUrl) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log("Password reset link sent to:", email);
+    const transporterInstance = getTransporter();
+    const info = await transporterInstance.sendMail(mailOptions);
+    console.log("Reset link email sent to:", email, "Message ID:", info.messageId);
     return true;
   } catch (error) {
-    console.error("Reset email failed:", error.message);
+    console.error("Reset link email failed:", error.message);
     return false;
   }
 };
 
-
-module.exports = { 
-  sendWelcomeEmail, 
-  sendPasswordResetEmail, 
-  sendPasswordResetLink  
-};
-
+module.exports = { sendWelcomeEmail, sendPasswordResetEmail, sendPasswordResetLink };

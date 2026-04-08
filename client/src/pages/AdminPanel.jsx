@@ -1,5 +1,5 @@
 // client/src/pages/AdminPanel.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 
@@ -7,6 +7,7 @@ function AdminPanel() {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [formData, setFormData] = useState({
@@ -22,137 +23,66 @@ function AdminPanel() {
 
   const isMobile = windowWidth < 768;
 
-  // Get current user
-  useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      if (parsedUser.role !== "admin") {
-        navigate("/dashboard");
-      }
-    } else {
-      navigate("/login");
-    }
-  }, [navigate]);
-
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // Fetch users
-  useEffect(() => {
-    if (user?.role === "admin") {
-      fetchUsers();
-    }
-  }, [user]);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const response = await API.get("/admin/users");
-      setUsers(response.data);
-      setError("");
-    } catch (err) {
-      console.error("Error fetching users:", err);
-      setError(err.response?.data?.message || "Failed to load users");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateUser = async (e) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    // Validation
-    if (!formData.name || !formData.email || !formData.password) {
-      setError("All fields are required");
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-
-    try {
-      const response = await API.post("/admin/users", formData);
-      setSuccess(`User ${response.data.name} created successfully!`);
-      setShowCreateModal(false);
-      setFormData({ name: "", email: "", password: "", role: "viewer" });
-      fetchUsers(); // Refresh list
-      
-      // Clear success after 3 seconds
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      console.error("Create user error:", err);
-      setError(err.response?.data?.message || "Failed to create user");
-    }
-  };
-
-  const handleDeleteUser = async (userId) => {
-    try {
-      await API.delete(`/admin/users/${userId}`);
-      setSuccess("User deleted successfully!");
-      setShowDeleteConfirm(null);
-      fetchUsers(); // Refresh list
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      console.error("Delete user error:", err);
-      setError(err.response?.data?.message || "Failed to delete user");
-    }
-  };
-
-  const handleResetPassword = async (userId) => {
-    const newPassword = prompt("Enter new password (min 6 characters):");
-    if (!newPassword) return;
+  // ================= FETCH USERS FUNCTION =================
+const fetchUsers = useCallback(async () => {
+  try {
+    // Verify token exists before making request
+    const token = localStorage.getItem("token");
+    console.log("FetchUsers - Token exists:", token ? "Yes" : "No");
     
-    if (newPassword.length < 6) {
-      alert("Password must be at least 6 characters");
+    if (!token) {
+      console.log("FetchUsers - No token, redirecting to login");
+      navigate("/login");
       return;
     }
-
-    try {
-      await API.post(`/admin/users/${userId}/reset-password`, { password: newPassword });
-      alert("Password reset successfully!");
-    } catch (err) {
-      console.error("Reset password error:", err);
-      alert(err.response?.data?.message || "Failed to reset password");
+    
+    setLoading(true);
+    const response = await API.get("/admin/users");
+    console.log("FetchUsers - Response:", response.data);
+    setUsers(response.data);
+    setError("");
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    console.error("Error status:", err.response?.status);
+    console.error("Error message:", err.response?.data?.message);
+    if (err.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      navigate("/login");
+    } else {
+      setError(err.response?.data?.message || "Failed to load users");
     }
-  };
-
-  const getRoleBadgeStyle = (role) => {
-    switch(role) {
-      case "admin":
-        return { backgroundColor: "#fee2e2", color: "#dc2626", icon: "👑" };
-      case "officer":
-        return { backgroundColor: "#dcfce7", color: "#16a34a", icon: "📋" };
-      default:
-        return { backgroundColor: "#f3f4f6", color: "#6b7280", icon: "👁️" };
-    }
-  };
-
-  // Check if user is admin
-  if (!user || user.role !== "admin") {
-    return null;
+  } finally {
+    setLoading(false);
   }
+}, [navigate]);
 
+  // ================= STYLES DEFINED =================
   const styles = {
     container: {
       minHeight: "100vh",
       background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
       fontFamily: "'Segoe UI', Roboto, sans-serif",
-      padding: isMobile ? "16px" : "24px"
+      paddingTop: isMobile ? "16px" : "24px",
+      paddingBottom: isMobile ? "16px" : "24px",
+      paddingLeft: isMobile ? "16px" : "24px",
+      paddingRight: isMobile ? "16px" : "24px"
+    },
+    loadingState: {
+      textAlign: "center",
+      paddingTop: "60px",
+      paddingBottom: "60px",
+      paddingLeft: "20px",
+      paddingRight: "20px",
+      color: "#6b7280"
     },
     header: {
       backgroundColor: "#1a3c34",
       color: "white",
-      padding: isMobile ? "16px" : "20px 32px",
+      paddingTop: isMobile ? "16px" : "20px",
+      paddingBottom: isMobile ? "16px" : "20px",
+      paddingLeft: isMobile ? "16px" : "32px",
+      paddingRight: isMobile ? "16px" : "32px",
       borderRadius: "16px",
       marginBottom: "24px",
       display: "flex",
@@ -173,7 +103,10 @@ function AdminPanel() {
     backBtn: {
       backgroundColor: "rgba(255,255,255,0.2)",
       border: "none",
-      padding: "8px 16px",
+      paddingTop: "8px",
+      paddingBottom: "8px",
+      paddingLeft: "16px",
+      paddingRight: "16px",
       borderRadius: "8px",
       color: "white",
       cursor: "pointer",
@@ -183,7 +116,10 @@ function AdminPanel() {
     createBtn: {
       backgroundColor: "#22c55e",
       border: "none",
-      padding: "10px 20px",
+      paddingTop: "10px",
+      paddingBottom: "10px",
+      paddingLeft: "20px",
+      paddingRight: "20px",
       borderRadius: "8px",
       color: "white",
       cursor: "pointer",
@@ -195,7 +131,10 @@ function AdminPanel() {
     card: {
       backgroundColor: "white",
       borderRadius: "24px",
-      padding: isMobile ? "20px" : "32px",
+      paddingTop: isMobile ? "20px" : "32px",
+      paddingBottom: isMobile ? "20px" : "32px",
+      paddingLeft: isMobile ? "20px" : "32px",
+      paddingRight: isMobile ? "20px" : "32px",
       boxShadow: "0 20px 40px rgba(0,0,0,0.1)"
     },
     title: {
@@ -239,7 +178,10 @@ function AdminPanel() {
     },
     th: {
       textAlign: "left",
-      padding: "12px 16px",
+      paddingTop: "12px",
+      paddingBottom: "12px",
+      paddingLeft: "16px",
+      paddingRight: "16px",
       backgroundColor: "#f8fafc",
       borderBottom: "2px solid #e2e8f0",
       fontWeight: "600",
@@ -247,7 +189,10 @@ function AdminPanel() {
       fontSize: "14px"
     },
     td: {
-      padding: "12px 16px",
+      paddingTop: "12px",
+      paddingBottom: "12px",
+      paddingLeft: "16px",
+      paddingRight: "16px",
       borderBottom: "1px solid #e2e8f0",
       color: "#475569",
       fontSize: "14px"
@@ -256,13 +201,19 @@ function AdminPanel() {
       display: "inline-flex",
       alignItems: "center",
       gap: "6px",
-      padding: "4px 10px",
+      paddingTop: "4px",
+      paddingBottom: "4px",
+      paddingLeft: "10px",
+      paddingRight: "10px",
       borderRadius: "20px",
       fontSize: "12px",
       fontWeight: "500"
     },
     actionBtn: {
-      padding: "6px 12px",
+      paddingTop: "6px",
+      paddingBottom: "6px",
+      paddingLeft: "12px",
+      paddingRight: "12px",
       margin: "0 4px",
       border: "none",
       borderRadius: "6px",
@@ -337,16 +288,23 @@ function AdminPanel() {
     },
     input: {
       width: "100%",
-      padding: "10px 12px",
+      paddingTop: "10px",
+      paddingBottom: "10px",
+      paddingLeft: "12px",
+      paddingRight: "12px",
       border: "1px solid #e2e8f0",
       borderRadius: "8px",
       fontSize: "14px",
       outline: "none",
+      boxSizing: "border-box",
       transition: "border-color 0.3s"
     },
     select: {
       width: "100%",
-      padding: "10px 12px",
+      paddingTop: "10px",
+      paddingBottom: "10px",
+      paddingLeft: "12px",
+      paddingRight: "12px",
       border: "1px solid #e2e8f0",
       borderRadius: "8px",
       fontSize: "14px",
@@ -362,7 +320,10 @@ function AdminPanel() {
     submitBtn: {
       backgroundColor: "#1a5f7a",
       color: "white",
-      padding: "10px 20px",
+      paddingTop: "10px",
+      paddingBottom: "10px",
+      paddingLeft: "20px",
+      paddingRight: "20px",
       border: "none",
       borderRadius: "8px",
       cursor: "pointer",
@@ -372,7 +333,10 @@ function AdminPanel() {
     cancelBtn: {
       backgroundColor: "#e5e7eb",
       color: "#374151",
-      padding: "10px 20px",
+      paddingTop: "10px",
+      paddingBottom: "10px",
+      paddingLeft: "20px",
+      paddingRight: "20px",
       border: "none",
       borderRadius: "8px",
       cursor: "pointer",
@@ -393,17 +357,154 @@ function AdminPanel() {
     }
   };
 
-  // Calculate stats
+  // ================= CHECK AUTHENTICATION =================
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem("token");
+      const userData = localStorage.getItem("user");
+      
+      console.log("AdminPanel - Checking auth:", { 
+        token: token ? "exists" : "none", 
+        userData: userData ? "exists" : "none" 
+      });
+      
+      if (!token || !userData) {
+        console.log("No token or user, redirecting to login");
+        navigate("/login", { replace: true });
+        return;
+      }
+      
+      try {
+        const parsedUser = JSON.parse(userData);
+        console.log("AdminPanel - Parsed user:", parsedUser);
+        
+        if (parsedUser.role !== "admin") {
+          console.log("Not admin, redirecting to dashboard");
+          navigate("/dashboard", { replace: true });
+          return;
+        }
+        
+        setUser(parsedUser);
+        setIsCheckingAuth(false);
+      } catch (e) {
+        console.error("Error parsing user:", e);
+        navigate("/login", { replace: true });
+      }
+    };
+    
+    checkAuth();
+  }, [navigate]);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Fetch users when user is authenticated
+  useEffect(() => {
+    if (user && user.role === "admin") {
+      fetchUsers();
+    }
+  }, [user, fetchUsers]);
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (!formData.name || !formData.email || !formData.password) {
+      setError("All fields are required");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    try {
+      const response = await API.post("/admin/users", formData);
+      setSuccess(`User ${response.data.user?.name || formData.name} created successfully! Credentials sent via email.`);
+      setShowCreateModal(false);
+      setFormData({ name: "", email: "", password: "", role: "viewer" });
+      fetchUsers();
+      
+      setTimeout(() => setSuccess(""), 5000);
+    } catch (err) {
+      console.error("Create user error:", err);
+      setError(err.response?.data?.message || "Failed to create user");
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    try {
+      await API.delete(`/admin/users/${userId}`);
+      setSuccess("User deleted successfully!");
+      setShowDeleteConfirm(null);
+      fetchUsers();
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      console.error("Delete user error:", err);
+      setError(err.response?.data?.message || "Failed to delete user");
+    }
+  };
+
+  const handleResetPassword = async (userId) => {
+    const newPassword = prompt("Enter new password (min 6 characters):");
+    if (!newPassword) return;
+    
+    if (newPassword.length < 6) {
+      alert("Password must be at least 6 characters");
+      return;
+    }
+
+    try {
+      await API.post(`/admin/users/${userId}/reset-password`, { password: newPassword });
+      alert("Password reset successfully! New credentials sent via email.");
+    } catch (err) {
+      console.error("Reset password error:", err);
+      alert(err.response?.data?.message || "Failed to reset password");
+    }
+  };
+
+  const getRoleBadgeStyle = (role) => {
+    switch(role) {
+      case "admin":
+        return { backgroundColor: "#fee2e2", color: "#dc2626", icon: "👑" };
+      case "officer":
+        return { backgroundColor: "#dcfce7", color: "#16a34a", icon: "📋" };
+      default:
+        return { backgroundColor: "#f3f4f6", color: "#6b7280", icon: "👁️" };
+    }
+  };
+
+  // Show loading while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.loadingState}>
+          <div style={{ fontSize: "48px", marginBottom: "16px" }}>⏳</div>
+          <p>Loading admin panel...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.role !== "admin") {
+    return null;
+  }
+
   const adminCount = users.filter(u => u.role === "admin").length;
   const officerCount = users.filter(u => u.role === "officer").length;
   const viewerCount = users.filter(u => u.role === "viewer").length;
 
   return (
     <div style={styles.container}>
-      {/* Header */}
       <div style={styles.header}>
         <div>
-          <div style={styles.headerTitle}>👑 Admin Control Panel</div>
+          <div style={styles.headerTitle}>Admin Control Panel</div>
           <div style={styles.headerSubtitle}>User Management & System Administration</div>
         </div>
         <div>
@@ -413,7 +514,7 @@ function AdminPanel() {
             onMouseEnter={e => e.target.style.backgroundColor = "rgba(255,255,255,0.3)"}
             onMouseLeave={e => e.target.style.backgroundColor = "rgba(255,255,255,0.2)"}
           >
-            ← Dashboard
+            Dashboard
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -426,11 +527,9 @@ function AdminPanel() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div style={styles.card}>
-        <h1 style={styles.title}>👥 User Management</h1>
+        <h1 style={styles.title}>User Management</h1>
         
-        {/* Stats */}
         <div style={styles.stats}>
           <div style={styles.statCard}>
             <div style={styles.statNumber}>{users.length}</div>
@@ -446,16 +545,14 @@ function AdminPanel() {
           </div>
         </div>
 
-        {/* Error/Success Messages */}
         {error && <div style={styles.errorAlert}>{error}</div>}
         {success && <div style={styles.successAlert}>{success}</div>}
 
-        {/* Users Table */}
         {loading ? (
           <div style={styles.emptyState}>Loading users...</div>
         ) : users.length === 0 ? (
           <div style={styles.emptyState}>
-            📭 No users found. Create your first user!
+            No users found. Create your first user!
           </div>
         ) : (
           <div style={styles.tableWrapper}>
@@ -481,7 +578,11 @@ function AdminPanel() {
                       </td>
                       <td style={styles.td}>{userItem.email}</td>
                       <td style={styles.td}>
-                        <span style={{...styles.roleBadge, backgroundColor: roleStyle.backgroundColor, color: roleStyle.color}}>
+                        <span style={{
+                          ...styles.roleBadge,
+                          backgroundColor: roleStyle.backgroundColor,
+                          color: roleStyle.color
+                        }}>
                           {roleStyle.icon} {userItem.role.charAt(0).toUpperCase() + userItem.role.slice(1)}
                         </span>
                       </td>
@@ -494,7 +595,7 @@ function AdminPanel() {
                           style={{ ...styles.actionBtn, ...styles.resetBtn }}
                           title="Reset Password"
                         >
-                          🔑 Reset PW
+                          Reset PW
                         </button>
                         {userItem.id !== user?.id && (
                           <button
@@ -502,7 +603,7 @@ function AdminPanel() {
                             style={{ ...styles.actionBtn, ...styles.deleteBtn }}
                             title="Delete User"
                           >
-                            🗑️ Delete
+                            Delete
                           </button>
                         )}
                       </td>
@@ -514,23 +615,21 @@ function AdminPanel() {
           </div>
         )}
 
-        {/* Info Box */}
         <div style={styles.credentialBox}>
-          <strong>📌 Admin Tips:</strong>
+          <strong>Admin Tips:</strong>
           <ul style={{ marginTop: "8px", marginLeft: "20px", fontSize: "13px" }}>
-            <li>Create user accounts and share credentials securely</li>
+            <li>Create user accounts and share credentials securely via email</li>
             <li>Officers can upload documents, Viewers can only view/download</li>
-            <li>Reset passwords when users forget them</li>
+            <li>Reset passwords when users forget them - new credentials sent via email</li>
             <li>You cannot delete your own account</li>
           </ul>
         </div>
       </div>
 
-      {/* Create User Modal */}
       {showCreateModal && (
         <div style={styles.modalOverlay} onClick={() => setShowCreateModal(false)}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>➕ Create New User</h3>
+            <h3 style={styles.modalTitle}>Create New User</h3>
             <form onSubmit={handleCreateUser}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Full Name *</label>
@@ -541,6 +640,8 @@ function AdminPanel() {
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   placeholder="Enter full name"
                   required
+                  onFocus={(e) => e.target.style.borderColor = "#1a5f7a"}
+                  onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
                 />
               </div>
               <div style={styles.inputGroup}>
@@ -552,6 +653,8 @@ function AdminPanel() {
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   placeholder="user@example.com"
                   required
+                  onFocus={(e) => e.target.style.borderColor = "#1a5f7a"}
+                  onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
                 />
               </div>
               <div style={styles.inputGroup}>
@@ -563,6 +666,8 @@ function AdminPanel() {
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                   placeholder="Min 6 characters"
                   required
+                  onFocus={(e) => e.target.style.borderColor = "#1a5f7a"}
+                  onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
                 />
               </div>
               <div style={styles.inputGroup}>
@@ -572,9 +677,9 @@ function AdminPanel() {
                   value={formData.role}
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
                 >
-                  <option value="viewer">👁️ Viewer (Can view/download only)</option>
-                  <option value="officer">📋 Officer (Can upload documents)</option>
-                  <option value="admin">👑 Administrator (Full access)</option>
+                  <option value="viewer">Viewer (Can view/download only)</option>
+                  <option value="officer">Officer (Can upload documents)</option>
+                  <option value="admin">Administrator (Full access)</option>
                 </select>
               </div>
               <div style={styles.modalButtons}>
@@ -588,6 +693,8 @@ function AdminPanel() {
                 <button
                   type="submit"
                   style={styles.submitBtn}
+                  onMouseEnter={e => e.target.style.backgroundColor = "#0e4a60"}
+                  onMouseLeave={e => e.target.style.backgroundColor = "#1a5f7a"}
                 >
                   Create User
                 </button>
@@ -597,11 +704,10 @@ function AdminPanel() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div style={styles.modalOverlay} onClick={() => setShowDeleteConfirm(null)}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>⚠️ Confirm Delete</h3>
+            <h3 style={styles.modalTitle}>Confirm Delete</h3>
             <p>Are you sure you want to delete this user?</p>
             <p style={{ color: "#dc2626", fontSize: "13px", marginTop: "8px" }}>
               This action cannot be undone.
@@ -616,6 +722,8 @@ function AdminPanel() {
               <button
                 style={{...styles.submitBtn, backgroundColor: "#dc2626"}}
                 onClick={() => handleDeleteUser(showDeleteConfirm)}
+                onMouseEnter={e => e.target.style.backgroundColor = "#b91c1c"}
+                onMouseLeave={e => e.target.style.backgroundColor = "#dc2626"}
               >
                 Delete User
               </button>

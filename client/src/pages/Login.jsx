@@ -12,15 +12,15 @@ function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if already logged in
+    // Check if already logged in - ALL users go to dashboard
     const token = localStorage.getItem("token");
     const user = localStorage.getItem("user");
     if (token && user) {
-      const userData = JSON.parse(user);
-      if (userData.role === "admin") {
-        navigate("/admin");
-      } else {
-        navigate("/dashboard");
+      try {
+        console.log("Already logged in, redirecting to dashboard");
+        navigate("/dashboard", { replace: true });
+      } catch (e) {
+        console.error("Error parsing user data:", e);
       }
     }
   }, [navigate]);
@@ -48,10 +48,12 @@ function Login() {
     try {
       const response = await API.post("/auth/login", { email, password });
       
+      console.log("Login response:", response.data);
+      
       // Store token
       localStorage.setItem("token", response.data.token);
       
-      // Store user data from response (more reliable than decoding token)
+      // Store user data
       const userData = {
         id: response.data.user.id,
         name: response.data.user.name,
@@ -60,14 +62,16 @@ function Login() {
       };
       localStorage.setItem("user", JSON.stringify(userData));
       
-      // Redirect based on role
-      if (userData.role === "admin") {
-        navigate("/admin");
-      } else {
-        navigate("/dashboard");
-      }
+      console.log("Stored user data:", userData);
+      console.log("Token stored:", response.data.token ? "Yes" : "No");
+      
+      // ✅ FIX: ALL users go to dashboard first
+      // Admin can access admin panel from dashboard via the Admin Panel button
+      console.log("Redirecting to dashboard");
+      navigate("/dashboard", { replace: true });
       
     } catch (err) {
+      console.error("Login error:", err);
       const message = err.response?.data?.message || "Login failed. Please try again.";
       setError(message);
     } finally {
@@ -262,7 +266,7 @@ function Login() {
 
         <form onSubmit={handleLogin} style={styles.form}>
           <div style={styles.inputGroup}>
-            <label style={styles.label}>📧 Email Address</label>
+            <label style={styles.label}>Email Address</label>
             <input
               type="email"
               placeholder="your.email@gov.in"
@@ -277,7 +281,7 @@ function Login() {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>🔒 Password</label>
+            <label style={styles.label}>Password</label>
             <div style={styles.inputWrapper}>
               <input
                 type={showPassword ? "text" : "password"}
@@ -305,7 +309,7 @@ function Login() {
             style={loading ? styles.buttonDisabled : styles.button}
             disabled={loading}
           >
-            {loading ? "⏳ Authenticating..." : "🚪 Login to System"}
+            {loading ? "Authenticating..." : "Login to System"}
           </button>
 
           <div style={styles.links}>
@@ -316,7 +320,7 @@ function Login() {
         </form>
 
         <div style={styles.securityNotice}>
-          <p style={styles.securityText}>🔐 AES-256-GCM Encrypted | 📝 Activity Logged | 🛡️ Tamper Detection</p>
+          <p style={styles.securityText}>AES-256-GCM Encrypted | Activity Logged | Tamper Detection</p>
           <div style={styles.features}>
             <span style={styles.featureBadge}>Role-Based Access</span>
             <span style={styles.featureBadge}>Audit Logs</span>
