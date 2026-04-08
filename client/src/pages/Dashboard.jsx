@@ -14,14 +14,14 @@ function Dashboard() {
   const isMobile = windowWidth < 768;
   const isTablet = windowWidth >= 768 && windowWidth < 1024;
 
-  // ✅ FIX: Handle logout
+  // Handle logout
   const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
   }, [navigate]);
 
-  // ✅ FIX: Fetch documents with proper error handling
+  // Fetch documents
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
     try {
@@ -61,28 +61,24 @@ function Dashboard() {
     return () => window.removeEventListener("resize", handleResize);
   }, [fetchDocuments, navigate]);
 
-  // ✅ FIX: Download function - uses correct backend endpoint
+  // Download function
   const handleDownload = async (docId, filename) => {
     try {
-      // Get token from localStorage
       const token = localStorage.getItem("token");
-      
-      // Open download in new tab with authorization header
       window.open(`http://localhost:5000/api/documents/download/${docId}?token=${token}`, '_blank');
-      
     } catch (err) {
       console.error("Download error:", err);
       alert("Download failed. Please try again.");
     }
   };
 
-  // ✅ FIX: Delete function
+  // Delete function
   const handleDelete = async (docId) => {
     if (!window.confirm("Are you sure you want to delete this document?")) return;
     
     try {
       await API.delete(`/documents/${docId}`);
-      fetchDocuments(); // Refresh list
+      fetchDocuments();
     } catch (err) {
       console.error("Delete error:", err);
       alert(err.response?.data?.message || "Delete failed");
@@ -91,7 +87,6 @@ function Dashboard() {
 
   const role = user?.role;
   
-  // ✅ FIX: Get user name properly
   const getUserName = () => {
     if (user?.name) return user.name;
     if (user?.email) return user.email.split('@')[0];
@@ -153,6 +148,17 @@ function Dashboard() {
       display: "inline-flex",
       alignItems: "center",
       gap: "6px"
+    },
+    adminPanelBtn: {
+      backgroundColor: "#f59e0b",
+      border: "none",
+      padding: "8px 16px",
+      borderRadius: "8px",
+      color: "white",
+      cursor: "pointer",
+      fontSize: "14px",
+      fontWeight: "600",
+      transition: "all 0.3s"
     },
     logoutBtn: {
       backgroundColor: "rgba(255,255,255,0.2)",
@@ -378,7 +384,7 @@ function Dashboard() {
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <div>
-            <div style={styles.logo}>🔐 Confidential Document System</div>
+            <div style={styles.logo}>Confidential Document System</div>
             <div style={styles.logoSmall}>Government of India | Secure Portal</div>
           </div>
           <div style={styles.userInfo}>
@@ -386,13 +392,26 @@ function Dashboard() {
             <span style={styles.roleBadge}>
               {roleDisplay.icon} {roleDisplay.name}
             </span>
+            
+            {/* ONLY ONE ADMIN PANEL BUTTON - In Header */}
+            {role === "admin" && (
+              <button 
+                style={styles.adminPanelBtn}
+                onMouseEnter={e => e.target.style.backgroundColor = "#d97706"}
+                onMouseLeave={e => e.target.style.backgroundColor = "#f59e0b"}
+                onClick={() => navigate("/admin")}
+              >
+                Admin Panel
+              </button>
+            )}
+            
             <button 
               style={styles.logoutBtn}
               onMouseEnter={e => e.target.style.backgroundColor = "rgba(255,255,255,0.3)"}
               onMouseLeave={e => e.target.style.backgroundColor = "rgba(255,255,255,0.2)"}
               onClick={() => setShowLogoutConfirm(true)}
             >
-              🚪 Logout
+              Logout
             </button>
           </div>
         </div>
@@ -539,37 +558,36 @@ function Dashboard() {
               </span>
             </div>
             <div style={styles.documentList}>
-  {documents.slice(0, 5).map((doc) => (
-    <div key={doc.id} style={styles.documentItem}>
-      <div style={styles.documentInfo}>
-        <span style={styles.documentIcon}>📄</span>
-        <div>
-          <div style={styles.documentName}>{doc.filename}</div>
-          <div style={styles.documentDate}>
-            {new Date(doc.created_at).toLocaleDateString()}
-          </div>
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: "8px" }}>
-        <button 
-          style={styles.downloadIcon}
-          onClick={() => handleDownload(doc.id, doc.filename)}
-        >
-          ⬇️ Download
-        </button>
-        {/* ✅ Delete button - ONLY for Admin */}
-        {role === "admin" && (
-          <button 
-            style={{...styles.downloadIcon, backgroundColor: "#ef4444"}}
-            onClick={() => handleDelete(doc.id)}
-          >
-            🗑️ Delete
-          </button>
-        )}
-      </div>
-    </div>
-  ))}
-</div>
+              {documents.slice(0, 5).map((doc) => (
+                <div key={doc.id} style={styles.documentItem}>
+                  <div style={styles.documentInfo}>
+                    <span style={styles.documentIcon}>📄</span>
+                    <div>
+                      <div style={styles.documentName}>{doc.filename}</div>
+                      <div style={styles.documentDate}>
+                        {new Date(doc.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button 
+                      style={styles.downloadIcon}
+                      onClick={() => handleDownload(doc.id, doc.filename)}
+                    >
+                      Download
+                    </button>
+                    {role === "admin" && (
+                      <button 
+                        style={{...styles.downloadIcon, backgroundColor: "#ef4444"}}
+                        onClick={() => handleDelete(doc.id)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>

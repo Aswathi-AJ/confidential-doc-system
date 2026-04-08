@@ -5,6 +5,8 @@ import UploadPage from "./pages/UploadPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import LogsPage from "./pages/LogsPage";
 import AdminPanel from "./pages/AdminPanel";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   return (
@@ -17,6 +19,8 @@ function App() {
         <Route path="/documents" element={<DocumentsPage />} />
         <Route path="/logs" element={<LogsPage />} />
         <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />   
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
