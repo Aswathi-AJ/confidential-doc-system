@@ -12,6 +12,20 @@ function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check if already logged in
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+    if (token && user) {
+      const userData = JSON.parse(user);
+      if (userData.role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+  }, [navigate]);
+
+  useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -20,7 +34,6 @@ function Login() {
   const isMobile = windowWidth < 768;
   const isTablet = windowWidth >= 768 && windowWidth < 1024;
 
-  // ✅ REAL LOGIN - No mock
   const handleLogin = async (e) => {
     e.preventDefault();
     
@@ -33,27 +46,29 @@ function Login() {
     setError("");
     
     try {
-      const res = await API.post("/auth/login", { email, password });
+      const response = await API.post("/auth/login", { email, password });
       
-      localStorage.setItem("token", res.data.token);
+      // Store token
+      localStorage.setItem("token", response.data.token);
       
-      // Decode token to get user info
-      const decoded = JSON.parse(atob(res.data.token.split('.')[1]));
-      localStorage.setItem("user", JSON.stringify({
-        id: decoded.id,
-        email: email,
-        role: decoded.role
-      }));
+      // Store user data from response (more reliable than decoding token)
+      const userData = {
+        id: response.data.user.id,
+        name: response.data.user.name,
+        email: response.data.user.email,
+        role: response.data.user.role
+      };
+      localStorage.setItem("user", JSON.stringify(userData));
       
       // Redirect based on role
-      if (decoded.role === "admin") {
+      if (userData.role === "admin") {
         navigate("/admin");
       } else {
         navigate("/dashboard");
       }
       
     } catch (err) {
-      const message = err.response?.data?.message || "Login failed";
+      const message = err.response?.data?.message || "Login failed. Please try again.";
       setError(message);
     } finally {
       setLoading(false);
@@ -138,7 +153,8 @@ function Login() {
       border: "2px solid #e0e0e0",
       borderRadius: "10px",
       outline: "none",
-      boxSizing: "border-box"
+      boxSizing: "border-box",
+      transition: "border-color 0.3s"
     },
     togglePassword: {
       position: "absolute",
@@ -161,7 +177,8 @@ function Login() {
       borderRadius: "10px",
       cursor: "pointer",
       marginTop: "8px",
-      width: "100%"
+      width: "100%",
+      transition: "background-color 0.3s"
     },
     buttonDisabled: {
       backgroundColor: "#9ca3af",
@@ -182,7 +199,8 @@ function Login() {
     link: {
       color: "#1a5f7a",
       textDecoration: "none",
-      fontSize: isMobile ? "13px" : "14px"
+      fontSize: isMobile ? "13px" : "14px",
+      cursor: "pointer"
     },
     securityNotice: {
       marginTop: isMobile ? "24px" : "30px",
@@ -253,6 +271,8 @@ function Login() {
               style={styles.input}
               disabled={loading}
               autoComplete="email"
+              onFocus={(e) => e.target.style.borderColor = "#1a5f7a"}
+              onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
             />
           </div>
 
@@ -267,13 +287,15 @@ function Login() {
                 style={styles.input}
                 disabled={loading}
                 autoComplete="current-password"
+                onFocus={(e) => e.target.style.borderColor = "#1a5f7a"}
+                onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 style={styles.togglePassword}
               >
-                {showPassword ? "👁️" : "👁️‍🗨️"}
+                {showPassword ? "🙈" : "👁️"}
               </button>
             </div>
           </div>
@@ -299,6 +321,7 @@ function Login() {
             <span style={styles.featureBadge}>Role-Based Access</span>
             <span style={styles.featureBadge}>Audit Logs</span>
             <span style={styles.featureBadge}>Suspicious Detection</span>
+            <span style={styles.featureBadge}>AES-256 Encryption</span>
           </div>
         </div>
       </div>
