@@ -1,11 +1,12 @@
 const express = require("express");
-const argon2 = require("argon2");  // ✅ Use argon2, NOT bcrypt
+const argon2 = require("argon2");
+const crypto = require("crypto");
 const verifyToken = require("../middleware/authMiddleware");
 const checkRole = require("../middleware/roleMiddleware");
 const db = require("../config/db");
 const router = express.Router();
 const logActivity = require("../utils/logger");
-const { sendWelcomeEmail, sendPasswordResetEmail } = require("../utils/mailer");
+const { sendSetupLinkEmail, sendPasswordResetLink } = require("../utils/mailer");
 
 // ================= GET ALL USERS =================
 router.get("/users", verifyToken, checkRole(["admin"]), (req, res) => {
@@ -16,17 +17,14 @@ router.get("/users", verifyToken, checkRole(["admin"]), (req, res) => {
   });
 });
 
-// ================= CREATE NEW USER (WITH EMAIL) =================
+// ================= CREATE NEW USER (SECURE - NO PASSWORD IN EMAIL) =================
 router.post("/users", verifyToken, checkRole(["admin"]), async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, role } = req.body;
   
-  console.log("Creating user:", { name, email, role, passwordLength: password?.length });
+  console.log("Creating user:", { name, email, role });
   
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: "All fields are required" });
-  }
-  if (password.length < 6) {
-    return res.status(400).json({ message: "Password must be at least 6 characters" });
+  if (!name || !email) {
+    return res.status(400).json({ message: "Name and email are required" });
   }
   if (!["admin", "officer", "viewer"].includes(role)) {
     return res.status(400).json({ message: "Invalid role" });
@@ -46,13 +44,18 @@ router.post("/users", verifyToken, checkRole(["admin"]), async (req, res) => {
       return res.status(400).json({ message: "User with this email already exists" });
     }
     
-    // ✅ Use argon2 to hash password (same as login)
-    const hashedPassword = await argon2.hash(password);
-    console.log("Password hashed successfully");
+    // Generate temporary random password (will be hashed but user never sees it)
+    const tempPassword = crypto.randomBytes(12).toString("hex");
+    const hashedPassword = await argon2.hash(tempPassword);
     
-    const sql = "INSERT INTO users (name, email, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())";
+    // Generate setup token (expires in 24 hours)
+    const setupToken = crypto.randomBytes(32).toString("hex");
+    const setupExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     
-    db.query(sql, [name, email, hashedPassword, role], async (err, result) => {
+    const sql = `INSERT INTO users (name, email, password, role, setup_token, setup_expiry, created_at, updated_at) 
+                 VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`;
+    
+    db.query(sql, [name, email, hashedPassword, role, setupToken, setupExpiry], async (err, result) => {
       if (err) {
         console.error("Error creating user:", err);
         return res.status(500).json({ message: "Failed to create user" });
@@ -60,12 +63,16 @@ router.post("/users", verifyToken, checkRole(["admin"]), async (req, res) => {
       
       console.log("User created with ID:", result.insertId);
       
-      // Send welcome email
-      const emailSent = await sendWelcomeEmail(email, name, password, role);
-      logActivity(req.user.id, "CREATE_USER", "SUCCESS", `Created user: ${email} with role: ${role}, Email sent: ${emailSent}`);
+      // Send setup link email (NO PASSWORD in email!)
+      const setupUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/setup-account?token=${setupToken}`;
+      const emailSent = await sendSetupLinkEmail(email, name, setupUrl, role);
+      
+      logActivity(req.user.id, "CREATE_USER", "SUCCESS", `Created user: ${email} with role: ${role}, Setup email sent: ${emailSent}`);
       
       res.status(201).json({
-        message: emailSent ? "User created successfully. Credentials sent via email." : "User created successfully but email notification failed.",
+        message: emailSent 
+          ? "User created successfully. Setup link sent to email." 
+          : "User created successfully but email notification failed.",
         user: { id: result.insertId, name, email, role }
       });
     });
@@ -75,16 +82,9 @@ router.post("/users", verifyToken, checkRole(["admin"]), async (req, res) => {
   }
 });
 
-// ================= RESET PASSWORD (WITH EMAIL) =================
+// ================= RESET PASSWORD (WITH RESET LINK - NO PASSWORD IN EMAIL) =================
 router.post("/users/:id/reset-password", verifyToken, checkRole(["admin"]), async (req, res) => {
   const userId = req.params.id;
-  const { password } = req.body;
-  
-  console.log("Resetting password for user ID:", userId);
-  
-  if (!password || password.length < 6) {
-    return res.status(400).json({ message: "Password must be at least 6 characters" });
-  }
   
   try {
     // Get user details first
@@ -98,19 +98,26 @@ router.post("/users/:id/reset-password", verifyToken, checkRole(["admin"]), asyn
     
     if (!user) return res.status(404).json({ message: "User not found" });
     
-    // ✅ Use argon2 to hash password
-    const hashedPassword = await argon2.hash(password);
+    // Generate reset token (expires in 1 hour)
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     
-    const sql = "UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?";
-    
-    db.query(sql, [hashedPassword, userId], async (err, result) => {
-      if (err) return res.status(500).json({ message: "Failed to reset password" });
-      if (result.affectedRows === 0) return res.status(404).json({ message: "User not found" });
+    // Save reset token in database
+    const updateSql = "UPDATE users SET reset_token = ?, reset_expiry = ? WHERE id = ?";
+    db.query(updateSql, [resetToken, resetExpiry, userId], async (err) => {
+      if (err) return res.status(500).json({ message: "Failed to generate reset link" });
       
-      const emailSent = await sendPasswordResetEmail(user.email, user.name, password);
+      // Send reset link email (NO PASSWORD in email!)
+      const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password?token=${resetToken}`;
+      const emailSent = await sendPasswordResetLink(user.email, user.name, resetUrl);
+      
       logActivity(req.user.id, "RESET_PASSWORD", "SUCCESS", `Reset password for user ID: ${userId}, Email sent: ${emailSent}`);
       
-      res.json({ message: emailSent ? "Password reset successfully. New credentials sent via email." : "Password reset successfully but email notification failed." });
+      res.json({ 
+        message: emailSent 
+          ? "Password reset link sent to email. User will create new password." 
+          : "Reset link generated but email notification failed."
+      });
     });
   } catch (err) {
     console.error("Error:", err);

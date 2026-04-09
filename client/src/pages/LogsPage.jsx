@@ -2,6 +2,20 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
+import { 
+
+  FaDownload, 
+
+  FaExclamationTriangle,
+  FaUpload,
+  FaTrash,
+  FaSignInAlt,
+  FaBan,
+  FaBug,
+  FaUndo,
+  FaFileAlt
+} from "react-icons/fa";
+import { RiGovernmentFill } from "react-icons/ri";
 
 function LogsPage() {
   const [logs, setLogs] = useState([]);
@@ -25,265 +39,7 @@ function LogsPage() {
   const navigate = useNavigate();
   const isMobile = windowWidth < 768;
 
-  // ✅ STYLES DEFINED FIRST - BEFORE ANY RETURN STATEMENTS
-  const styles = {
-    container: {
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-      fontFamily: "'Segoe UI', Roboto, sans-serif",
-      padding: isMobile ? "16px" : "24px"
-    },
-    loadingContainer: {
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
-      alignItems: "center",
-      background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-      fontFamily: "'Segoe UI', Roboto, sans-serif"
-    },
-    spinner: {
-      fontSize: "48px",
-      marginBottom: "16px",
-      animation: "spin 1s linear infinite"
-    },
-    header: {
-      backgroundColor: "#1a3c34",
-      color: "white",
-      padding: isMobile ? "16px" : "20px 32px",
-      borderRadius: "16px",
-      marginBottom: "24px",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      flexWrap: "wrap",
-      gap: "16px"
-    },
-    headerTitle: {
-      fontSize: isMobile ? "18px" : "24px",
-      fontWeight: "700"
-    },
-    headerSubtitle: {
-      fontSize: isMobile ? "12px" : "14px",
-      opacity: 0.8,
-      marginTop: "4px"
-    },
-    backBtn: {
-      backgroundColor: "rgba(255,255,255,0.2)",
-      border: "none",
-      padding: "8px 16px",
-      borderRadius: "8px",
-      color: "white",
-      cursor: "pointer",
-      fontSize: "14px",
-      transition: "background 0.3s"
-    },
-    refreshBtn: {
-      backgroundColor: "#22c55e",
-      border: "none",
-      padding: "8px 16px",
-      borderRadius: "8px",
-      color: "white",
-      cursor: "pointer",
-      fontSize: "14px",
-      marginLeft: "8px",
-      transition: "background 0.3s"
-    },
-    autoRefreshBtn: {
-      backgroundColor: autoRefresh ? "#f59e0b" : "rgba(255,255,255,0.2)",
-      border: "none",
-      padding: "8px 16px",
-      borderRadius: "8px",
-      color: "white",
-      cursor: "pointer",
-      fontSize: "14px",
-      marginLeft: "8px",
-      transition: "background 0.3s"
-    },
-    card: {
-      backgroundColor: "white",
-      borderRadius: "24px",
-      padding: isMobile ? "20px" : "32px",
-      boxShadow: "0 20px 40px rgba(0,0,0,0.1)"
-    },
-    title: {
-      fontSize: isMobile ? "24px" : "28px",
-      fontWeight: "700",
-      color: "#1a3c34",
-      marginBottom: "8px"
-    },
-    alertBanner: {
-      backgroundColor: "#fee2e2",
-      borderLeft: "4px solid #dc2626",
-      padding: "16px",
-      borderRadius: "12px",
-      marginBottom: "24px",
-      display: "flex",
-      alignItems: "center",
-      gap: "12px"
-    },
-    alertText: {
-      color: "#dc2626",
-      fontWeight: "500"
-    },
-    statsGrid: {
-      display: "grid",
-      gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)",
-      gap: "16px",
-      marginBottom: "24px"
-    },
-    statCard: {
-      backgroundColor: "#f8fafc",
-      padding: "16px",
-      borderRadius: "12px",
-      textAlign: "center",
-      cursor: "pointer",
-      transition: "transform 0.3s"
-    },
-    statNumber: {
-      fontSize: "28px",
-      fontWeight: "700",
-      color: "#1a3c34"
-    },
-    statLabel: {
-      fontSize: "12px",
-      color: "#64748b",
-      marginTop: "4px"
-    },
-    filterBar: {
-      display: "flex",
-      gap: "12px",
-      marginBottom: "24px",
-      flexWrap: "wrap"
-    },
-    searchBox: {
-      flex: "1",
-      padding: "10px 16px",
-      fontSize: "14px",
-      border: "1px solid #e2e8f0",
-      borderRadius: "12px",
-      outline: "none",
-      minWidth: "200px"
-    },
-    select: {
-      padding: "10px 16px",
-      fontSize: "14px",
-      border: "1px solid #e2e8f0",
-      borderRadius: "12px",
-      backgroundColor: "white",
-      cursor: "pointer",
-      outline: "none"
-    },
-    tableWrapper: {
-      overflowX: "auto",
-      borderRadius: "12px",
-      border: "1px solid #e2e8f0"
-    },
-    table: {
-      width: "100%",
-      borderCollapse: "collapse",
-      backgroundColor: "white",
-      minWidth: "800px"
-    },
-    th: {
-      textAlign: "left",
-      padding: "12px 16px",
-      backgroundColor: "#f8fafc",
-      borderBottom: "2px solid #e2e8f0",
-      fontWeight: "600",
-      color: "#1e293b",
-      fontSize: "14px"
-    },
-    td: {
-      padding: "12px 16px",
-      borderBottom: "1px solid #e2e8f0",
-      color: "#475569",
-      fontSize: "14px"
-    },
-    statusBadge: {
-      display: "inline-flex",
-      alignItems: "center",
-      gap: "6px",
-      padding: "4px 10px",
-      borderRadius: "20px",
-      fontSize: "12px",
-      fontWeight: "500"
-    },
-    suspiciousRow: {
-      backgroundColor: "#fef2f2",
-      borderLeft: "3px solid #dc2626",
-      cursor: "pointer",
-      transition: "background 0.2s"
-    },
-    normalRow: {
-      cursor: "pointer",
-      transition: "background 0.2s"
-    },
-    emptyState: {
-      textAlign: "center",
-      padding: "48px",
-      color: "#64748b"
-    },
-    modal: {
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.5)",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 1000,
-      padding: "16px"
-    },
-    modalContent: {
-      backgroundColor: "white",
-      borderRadius: "16px",
-      padding: "24px",
-      maxWidth: "500px",
-      width: "100%",
-      maxHeight: "90%",
-      overflow: "auto"
-    },
-    modalTitle: {
-      fontSize: "20px",
-      fontWeight: "600",
-      color: "#1a3c34",
-      marginBottom: "16px"
-    },
-    modalInfo: {
-      marginBottom: "12px",
-      padding: "8px 0",
-      borderBottom: "1px solid #e2e8f0"
-    },
-    modalLabel: {
-      fontWeight: "600",
-      color: "#1e293b",
-      marginBottom: "4px"
-    },
-    modalValue: {
-      color: "#475569",
-      wordBreak: "break-word"
-    },
-    closeBtn: {
-      backgroundColor: "#e2e8f0",
-      color: "#475569",
-      padding: "8px 16px",
-      border: "none",
-      borderRadius: "8px",
-      cursor: "pointer",
-      marginTop: "16px",
-      marginRight: "8px"
-    },
-    loadingState: {
-      textAlign: "center",
-      padding: "60px 20px",
-      color: "#6b7280"
-    }
-  };
-
-  // Get user from localStorage
+  // Get user and check admin permission
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (userData) {
@@ -299,7 +55,7 @@ function LogsPage() {
     }
   }, [navigate]);
 
-  // Handle window resize
+  // Handle resize
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener("resize", handleResize);
@@ -311,36 +67,31 @@ function LogsPage() {
     try {
       setLoading(true);
       const response = await API.get("/documents/logs");
-      // Sort by latest first
       const sortedLogs = response.data.sort((a, b) => 
         new Date(b.created_at) - new Date(a.created_at)
       );
       setLogs(sortedLogs);
-      
-      // Calculate stats
+
       const total = sortedLogs.length;
       const success = sortedLogs.filter(log => log.status === "SUCCESS").length;
       const failed = sortedLogs.filter(log => log.status === "FAILED").length;
-      
-      // Case-insensitive suspicious detection
       const suspicious = sortedLogs.filter(log => {
         const actionUpper = (log.action || "").toUpperCase();
-        return actionUpper.includes("UNAUTHORIZED") || 
+        return log.status === "FAILED" || 
+               actionUpper.includes("UNAUTHORIZED") || 
                actionUpper.includes("VIOLATION") ||
-               log.status === "FAILED";
+               actionUpper.includes("TAMPER");
       }).length;
-      
+
       setStats({ total, success, failed, suspicious });
-      
     } catch (err) {
       console.error("Error fetching logs:", err);
-      alert("Failed to fetch logs");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Auto refresh every 10 seconds
+  // Auto refresh
   useEffect(() => {
     if (user) fetchLogs();
     
@@ -348,17 +99,13 @@ function LogsPage() {
     if (autoRefresh) {
       interval = setInterval(fetchLogs, 10000);
     }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [user, autoRefresh, fetchLogs]);
 
   // Filter logs
   useEffect(() => {
     let filtered = [...logs];
     
-    // Search filter
     if (searchTerm) {
       filtered = filtered.filter(log => 
         (log.action || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -367,12 +114,10 @@ function LogsPage() {
       );
     }
     
-    // Action filter
     if (filterAction !== "all") {
       filtered = filtered.filter(log => log.action === filterAction);
     }
     
-    // Status filter
     if (filterStatus !== "all") {
       filtered = filtered.filter(log => log.status === filterStatus);
     }
@@ -380,368 +125,584 @@ function LogsPage() {
     setFilteredLogs(filtered);
   }, [logs, searchTerm, filterAction, filterStatus]);
 
+  // Get action icon component
   const getActionIcon = (action) => {
     const actionUpper = (action || "").toUpperCase();
-    if (actionUpper.includes("UPLOAD")) return "📤";
-    if (actionUpper.includes("DOWNLOAD")) return "📥";
-    if (actionUpper.includes("DELETE")) return "🗑️";
-    if (actionUpper.includes("LOGIN")) return "🔐";
-    if (actionUpper.includes("UNAUTHORIZED")) return "🚫";
-    if (actionUpper.includes("VIOLATION")) return "⚠️";
-    if (actionUpper.includes("RECOVERY")) return "🔄";
-    return "📝";
+    if (actionUpper.includes("UPLOAD")) return <FaUpload size={12} />;
+    if (actionUpper.includes("DOWNLOAD")) return <FaDownload size={12} />;
+    if (actionUpper.includes("DELETE")) return <FaTrash size={12} />;
+    if (actionUpper.includes("LOGIN")) return <FaSignInAlt size={12} />;
+    if (actionUpper.includes("UNAUTHORIZED")) return <FaBan size={12} />;
+    if (actionUpper.includes("TAMPER")) return <FaBug size={12} />;
+    if (actionUpper.includes("RECOVERY")) return <FaUndo size={12} />;
+    return <FaFileAlt size={12} />;
   };
 
   const getStatusStyle = (status) => {
-    if (status === "SUCCESS") {
-      return { color: "#10b981", backgroundColor: "#dcfce7", icon: "✅" };
-    } else if (status === "FAILED") {
-      return { color: "#dc2626", backgroundColor: "#fee2e2", icon: "❌" };
-    }
-    return { color: "#f59e0b", backgroundColor: "#fed7aa", icon: "⚠️" };
-  };
-
-  const getActionColor = (action) => {
-    const actionUpper = (action || "").toUpperCase();
-    if (actionUpper.includes("UNAUTHORIZED") || actionUpper.includes("VIOLATION")) {
-      return "#dc2626";
-    }
-    if (actionUpper.includes("RECOVERY")) {
-      return "#f59e0b";
-    }
-    return "#1a5f7a";
+    if (status === "SUCCESS") return { color: "#67e8f9", bg: "rgba(103,232,249,0.12)" };
+    if (status === "FAILED") return { color: "#fca5a5", bg: "rgba(248,113,113,0.12)" };
+    if (status === "WARNING") return { color: "#fcd34d", bg: "rgba(245,158,11,0.12)" };
+    return { color: "#94a3b8", bg: "rgba(148,163,184,0.12)" };
   };
 
   const uniqueActions = [...new Set(logs.map(log => log.action))];
 
-  // Check for suspicious activities
   const hasSuspiciousActivity = filteredLogs.some(log => {
     const actionUpper = (log.action || "").toUpperCase();
     return log.status === "FAILED" || 
            actionUpper.includes("UNAUTHORIZED") || 
-           actionUpper.includes("VIOLATION");
+           actionUpper.includes("VIOLATION") ||
+           actionUpper.includes("TAMPER");
   });
 
-  // Escape CSV function
-  const escapeCSV = (str) => {
-    if (!str) return '""';
-    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-      return `"${str.replace(/"/g, '""')}"`;
-    }
-    return str;
+  const styles = {
+    container: {
+      minHeight: "100vh",
+      background: "#0a0a14",
+      color: "#f0f9ff",
+      fontFamily: "'Inter', system-ui, sans-serif",
+      position: "relative",
+    },
+
+    backgroundLayer: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: `
+        radial-gradient(circle at 30% 25%, rgba(103, 232, 249, 0.12) 0%, transparent 55%),
+        radial-gradient(circle at 70% 75%, rgba(167, 139, 250, 0.10) 0%, transparent 55%)
+      `,
+      zIndex: 0,
+    },
+
+    holographicGrid: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundImage: `
+        linear-gradient(rgba(103,232,249,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(103,232,249,0.04) 1px, transparent 1px)
+      `,
+      backgroundSize: "40px 40px",
+      animation: "holoScan 15s linear infinite",
+      pointerEvents: "none",
+      zIndex: 0,
+    },
+
+header: {
+  position: "sticky",
+  top: 0,
+  zIndex: 100,
+  background: "rgba(15, 15, 35, 0.96)",
+  backdropFilter: "blur(16px)",
+  borderBottom: "1px solid rgba(167, 139, 250, 0.25)",
+  padding: isMobile ? "12px 16px" : "14px 32px",
+},
+
+    headerContent: {
+      maxWidth: "1280px",
+      margin: "0 auto",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: "12px",
+    },
+
+    logoSection: {
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+    },
+
+    logo: {
+      fontSize: isMobile ? "16px" : "20px",
+      fontWeight: "800",
+      background: "linear-gradient(90deg, #67e8f9, #c4b5fd)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+    },
+
+    main: {
+      position: "relative",
+      zIndex: 1,
+      maxWidth: "1280px",
+      margin: "0 auto",
+      padding: isMobile ? "20px 16px" : "30px 32px",
+    },
+
+    card: {
+      background: "rgba(15, 15, 35, 0.90)",
+      backdropFilter: "blur(20px)",
+      border: "1px solid rgba(167, 139, 250, 0.3)",
+      borderRadius: "20px",
+      padding: isMobile ? "20px" : "24px",
+      boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
+    },
+
+    title: {
+      fontSize: isMobile ? "22px" : "24px",
+      fontWeight: "700",
+      color: "#f0f9ff",
+      marginBottom: "6px",
+    },
+
+    alertBanner: {
+      background: "rgba(248, 113, 113, 0.12)",
+      border: "1px solid rgba(248, 113, 113, 0.4)",
+      color: "#fca5a5",
+      padding: "12px 16px",
+      borderRadius: "12px",
+      marginBottom: "20px",
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+      fontSize: "12px",
+    },
+
+    statsGrid: {
+      display: "grid",
+      gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+      gap: "12px",
+      marginBottom: "24px",
+    },
+
+    statCard: {
+      background: "rgba(30, 30, 60, 0.6)",
+      border: "1px solid rgba(167, 139, 250, 0.2)",
+      borderRadius: "12px",
+      padding: "14px 10px",
+      textAlign: "center",
+    },
+
+    statNumber: {
+      fontSize: "24px",
+      fontWeight: "700",
+      color: "#67e8f9",
+    },
+
+    statLabel: {
+      fontSize: "10px",
+      color: "#a5b4fc",
+      marginTop: "4px",
+    },
+
+    filterBar: {
+      display: "flex",
+      gap: "10px",
+      marginBottom: "20px",
+      flexWrap: "wrap",
+    },
+
+    searchBox: {
+      flex: "1",
+      minWidth: "200px",
+      padding: "8px 14px",
+      background: "rgba(15, 15, 35, 0.85)",
+      border: "1.5px solid rgba(129, 140, 248, 0.35)",
+      borderRadius: "10px",
+      color: "#f0f9ff",
+      fontSize: "12px",
+      outline: "none",
+    },
+
+    select: {
+      padding: "8px 14px",
+      background: "rgba(15, 15, 35, 0.85)",
+      border: "1.5px solid rgba(129, 140, 248, 0.35)",
+      borderRadius: "10px",
+      color: "#f0f9ff",
+      fontSize: "12px",
+      outline: "none",
+    },
+
+    tableWrapper: {
+      overflowX: "auto",
+      borderRadius: "12px",
+      border: "1px solid rgba(167, 139, 250, 0.15)",
+    },
+
+    table: {
+      width: "100%",
+      borderCollapse: "collapse",
+      background: "rgba(15, 15, 35, 0.6)",
+      minWidth: "800px",
+    },
+
+    th: {
+      textAlign: "left",
+      padding: "10px 12px",
+      background: "rgba(30, 30, 60, 0.8)",
+      color: "#c4b5fd",
+      fontWeight: "600",
+      fontSize: "11px",
+      borderBottom: "1px solid rgba(167, 139, 250, 0.15)",
+    },
+
+    td: {
+      padding: "10px 12px",
+      borderBottom: "1px solid rgba(167, 139, 250, 0.1)",
+      color: "#e0f2fe",
+      fontSize: "12px",
+    },
+
+    statusBadge: {
+      padding: "3px 10px",
+      borderRadius: "16px",
+      fontSize: "10px",
+      fontWeight: "600",
+    },
+
+    suspiciousRow: {
+      background: "rgba(248, 113, 113, 0.08)",
+      borderLeft: "3px solid #fca5a5",
+    },
+
+    tamperRow: {
+      background: "rgba(245, 158, 11, 0.08)",
+      borderLeft: "3px solid #fcd34d",
+    },
+
+    modalOverlay: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(10, 10, 20, 0.88)",
+      backdropFilter: "blur(8px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 2000,
+    },
+
+    modalContent: {
+      background: "rgba(15, 15, 35, 0.98)",
+      border: "1px solid rgba(167, 139, 250, 0.4)",
+      borderRadius: "16px",
+      padding: "24px",
+      width: "90%",
+      maxWidth: "460px",
+      color: "#f0f9ff",
+    },
   };
 
-  // ✅ Show loading state while user loads (using styles defined above)
   if (!user) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.spinner}>⏳</div>
-        <p>Loading...</p>
+      <div style={{ minHeight: "100vh", background: "#0a0a14", display: "flex", alignItems: "center", justifyContent: "center", color: "#67e8f9" }}>
+        Loading...
       </div>
     );
   }
 
   return (
     <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div>
-          <div style={styles.headerTitle}>📊 Security Audit Logs</div>
-          <div style={styles.headerSubtitle}>
-            Real-time monitoring & suspicious activity detection
-          </div>
-        </div>
-        <div>
-          <button
-            onClick={() => navigate("/dashboard")}
-            style={styles.backBtn}
-            onMouseEnter={e => e.target.style.backgroundColor = "rgba(255,255,255,0.3)"}
-            onMouseLeave={e => e.target.style.backgroundColor = "rgba(255,255,255,0.2)"}
-          >
-            ← Dashboard
-          </button>
-          <button
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            style={styles.autoRefreshBtn}
-            onMouseEnter={e => e.target.style.backgroundColor = autoRefresh ? "#d97706" : "rgba(255,255,255,0.3)"}
-            onMouseLeave={e => e.target.style.backgroundColor = autoRefresh ? "#f59e0b" : "rgba(255,255,255,0.2)"}
-          >
-            {autoRefresh ? "⏸️ Auto Refresh ON" : "▶️ Auto Refresh OFF"}
-          </button>
-          <button
-            onClick={fetchLogs}
-            style={styles.refreshBtn}
-            onMouseEnter={e => e.target.style.backgroundColor = "#16a34a"}
-            onMouseLeave={e => e.target.style.backgroundColor = "#22c55e"}
-          >
-            🔄 Refresh
-          </button>
-        </div>
-      </div>
+      <div style={styles.backgroundLayer} />
+      <div style={styles.holographicGrid} />
 
-      {/* Main Content */}
-      <div style={styles.card}>
-        <h1 style={styles.title}>📋 Activity Monitoring</h1>
-
-        {/* Security Alert Banner */}
-        {hasSuspiciousActivity && (
-          <div style={styles.alertBanner}>
-            <span style={{ fontSize: "24px" }}>🚨</span>
+      <header style={styles.header}>
+        <div style={styles.headerContent}>
+          <div style={styles.logoSection}>
+            <RiGovernmentFill size={18} color="#67e8f9" />
             <div>
-              <div style={styles.alertText}>Security Alert!</div>
-              <div style={{ fontSize: "13px", color: "#991b1b" }}>
-                Suspicious activities detected. Review failed attempts immediately.
-              </div>
+              <div style={styles.logo}>Confidential Document System</div>
+              <div style={{ fontSize: "9px", color: "#a5b4fc" }}>Security Audit Logs</div>
             </div>
           </div>
-        )}
 
-        {/* Statistics */}
-        <div style={styles.statsGrid}>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{stats.total}</div>
-            <div style={styles.statLabel}>Total Activities</div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={{ ...styles.statNumber, color: "#10b981" }}>{stats.success}</div>
-            <div style={styles.statLabel}>Successful</div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={{ ...styles.statNumber, color: "#dc2626" }}>{stats.failed}</div>
-            <div style={styles.statLabel}>Failed Attempts</div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={{ ...styles.statNumber, color: "#f59e0b" }}>{stats.suspicious}</div>
-            <div style={styles.statLabel}>Suspicious Events</div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div style={styles.filterBar}>
-          <input
-            type="text"
-            placeholder="🔍 Search by user, action, or details..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={styles.searchBox}
-            onFocus={(e) => e.target.style.borderColor = "#1a5f7a"}
-            onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
-          />
-          <select
-            value={filterAction}
-            onChange={(e) => setFilterAction(e.target.value)}
-            style={styles.select}
-          >
-            <option value="all">All Actions</option>
-            {uniqueActions.map(action => (
-              <option key={action} value={action}>{action}</option>
-            ))}
-          </select>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            style={styles.select}
-          >
-            <option value="all">All Status</option>
-            <option value="SUCCESS">✅ Success</option>
-            <option value="FAILED">❌ Failed</option>
-          </select>
-        </div>
-
-        {/* Logs Table */}
-        {loading ? (
-          <div style={styles.loadingState}>
-            <div style={{ fontSize: "48px", marginBottom: "16px" }}>⏳</div>
-            <p>Loading security logs...</p>
-          </div>
-        ) : filteredLogs.length === 0 ? (
-          <div style={styles.emptyState}>
-            📭 No logs found matching your filters
-          </div>
-        ) : (
-          <div style={styles.tableWrapper}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>#</th>
-                  <th style={styles.th}>👤 User ID</th>
-                  <th style={styles.th}>⚡ Action</th>
-                  <th style={styles.th}>📊 Status</th>
-                  <th style={styles.th}>📅 Timestamp</th>
-                  <th style={styles.th}>🔍 Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.map((log, index) => {
-                  const statusStyle = getStatusStyle(log.status);
-                  const actionUpper = (log.action || "").toUpperCase();
-                  const isSuspicious = log.status === "FAILED" || 
-                                       actionUpper.includes("UNAUTHORIZED") || 
-                                       actionUpper.includes("VIOLATION");
-                  
-                  return (
-                    <tr 
-                      key={log.id} 
-                      style={isSuspicious ? styles.suspiciousRow : styles.normalRow}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "#f1f5f9";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = isSuspicious ? "#fef2f2" : "";
-                      }}
-                      onClick={() => {
-                        setSelectedLog(log);
-                        setShowModal(true);
-                      }}
-                    >
-                      <td style={styles.td}>{index + 1}</td>
-                      <td style={styles.td}>
-                        <strong>#{log.user_id}</strong>
-                      </td>
-                      <td style={styles.td}>
-                        <span style={{ color: getActionColor(log.action) }}>
-                          {getActionIcon(log.action)} {log.action}
-                        </span>
-                      </td>
-                      <td style={styles.td}>
-                        <span style={{
-                          ...styles.statusBadge,
-                          backgroundColor: statusStyle.backgroundColor,
-                          color: statusStyle.color
-                        }}>
-                          {statusStyle.icon} {log.status}
-                        </span>
-                      </td>
-                      <td style={styles.td}>
-                        {new Date(log.created_at).toLocaleString()}
-                      </td>
-                      <td style={styles.td}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedLog(log);
-                            setShowModal(true);
-                          }}
-                          style={{
-                            padding: "4px 12px",
-                            backgroundColor: "#3b82f6",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            fontSize: "12px"
-                          }}
-                        >
-                          View Details
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Export Option */}
-        {filteredLogs.length > 0 && (
-          <div style={{ marginTop: "20px", textAlign: "center" }}>
-            <button
-              onClick={() => {
-                const csv = [
-                  ["ID", "User ID", "Action", "Status", "Timestamp", "Details"],
-                  ...filteredLogs.map(log => [
-                    log.id,
-                    log.user_id,
-                    escapeCSV(log.action),
-                    log.status,
-                    new Date(log.created_at).toLocaleString(),
-                    escapeCSV(log.details || "N/A")
-                  ])
-                ].map(row => row.join(",")).join("\n");
-                
-                const blob = new Blob([csv], { type: "text/csv" });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `security-logs-${new Date().toISOString()}.csv`;
-                a.click();
-                window.URL.revokeObjectURL(url);
-              }}
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button 
+              onClick={() => navigate("/dashboard")}
               style={{
-                padding: "10px 20px",
-                backgroundColor: "#6b7280",
-                color: "white",
+                background: "rgba(167, 139, 250, 0.12)",
+                color: "#c4b5fd",
+                border: "1px solid rgba(167, 139, 250, 0.3)",
+                padding: "6px 14px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "11px"
+              }}
+            >
+              Dashboard
+            </button>
+
+            <button 
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              style={{
+                background: autoRefresh ? "#7c3aed" : "rgba(167, 139, 250, 0.12)",
+                color: autoRefresh ? "#0a0a14" : "#c4b5fd",
+                border: "1px solid rgba(167, 139, 250, 0.3)",
+                padding: "6px 14px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: autoRefresh ? "600" : "normal"
+              }}
+            >
+              {autoRefresh ? "Auto Refresh ON" : "Auto Refresh OFF"}
+            </button>
+
+            <button 
+              onClick={fetchLogs}
+              style={{
+                background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
+                color: "#0a0a14",
+                padding: "6px 14px",
                 border: "none",
                 borderRadius: "8px",
                 cursor: "pointer",
-                fontSize: "14px",
-                transition: "background 0.3s"
+                fontWeight: "600",
+                fontSize: "11px"
               }}
-              onMouseEnter={e => e.target.style.backgroundColor = "#4b5563"}
-              onMouseLeave={e => e.target.style.backgroundColor = "#6b7280"}
             >
-              📊 Export Logs (CSV)
+              Refresh
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      </header>
 
-      {/* Log Details Modal */}
-      {showModal && selectedLog && (
-        <div style={styles.modal} onClick={() => setShowModal(false)}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>📋 Log Details</h3>
-            <div style={styles.modalInfo}>
-              <div style={styles.modalLabel}>Log ID:</div>
-              <div style={styles.modalValue}>#{selectedLog.id}</div>
-            </div>
-            <div style={styles.modalInfo}>
-              <div style={styles.modalLabel}>User ID:</div>
-              <div style={styles.modalValue}>{selectedLog.user_id}</div>
-            </div>
-            <div style={styles.modalInfo}>
-              <div style={styles.modalLabel}>Action:</div>
-              <div style={styles.modalValue}>
-                {getActionIcon(selectedLog.action)} {selectedLog.action}
+      <main style={styles.main}>
+        <div style={styles.card}>
+          <h1 style={styles.title}>Security Audit Logs</h1>
+
+          {hasSuspiciousActivity && (
+            <div style={styles.alertBanner}>
+              <FaExclamationTriangle size={16} />
+              <div>
+                <strong>Security Alert:</strong> Suspicious activities detected
               </div>
             </div>
-            <div style={styles.modalInfo}>
-              <div style={styles.modalLabel}>Status:</div>
-              <div style={styles.modalValue}>
-                <span style={{ color: selectedLog.status === "SUCCESS" ? "#10b981" : "#dc2626" }}>
-                  {selectedLog.status}
-                </span>
-              </div>
+          )}
+
+          <div style={styles.statsGrid}>
+            <div style={styles.statCard}>
+              <div style={styles.statNumber}>{stats.total}</div>
+              <div style={styles.statLabel}>Total Events</div>
             </div>
-            <div style={styles.modalInfo}>
-              <div style={styles.modalLabel}>Timestamp:</div>
-              <div style={styles.modalValue}>
-                {new Date(selectedLog.created_at).toLocaleString()}
-              </div>
+            <div style={styles.statCard}>
+              <div style={{ ...styles.statNumber, color: "#67e8f9" }}>{stats.success}</div>
+              <div style={styles.statLabel}>Successful</div>
             </div>
-            {selectedLog.details && (
-              <div style={styles.modalInfo}>
-                <div style={styles.modalLabel}>Additional Details:</div>
-                <div style={styles.modalValue}>{selectedLog.details}</div>
-              </div>
-            )}
-            <div>
+            <div style={styles.statCard}>
+              <div style={{ ...styles.statNumber, color: "#fca5a5" }}>{stats.failed}</div>
+              <div style={styles.statLabel}>Failed</div>
+            </div>
+            <div style={styles.statCard}>
+              <div style={{ ...styles.statNumber, color: "#fcd34d" }}>{stats.suspicious}</div>
+              <div style={styles.statLabel}>Suspicious</div>
+            </div>
+          </div>
+
+          <div style={styles.filterBar}>
+            <input
+              type="text"
+              placeholder="Search by user, action or details..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={styles.searchBox}
+            />
+            <select value={filterAction} onChange={(e) => setFilterAction(e.target.value)} style={styles.select}>
+              <option value="all">All Actions</option>
+              {uniqueActions.map(action => (
+                <option key={action} value={action}>{action}</option>
+              ))}
+            </select>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={styles.select}>
+              <option value="all">All Status</option>
+              <option value="SUCCESS">Success</option>
+              <option value="FAILED">Failed</option>
+            </select>
+          </div>
+
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "60px 20px", color: "#67e8f9", fontSize: "13px" }}>
+              Loading security logs...
+            </div>
+          ) : filteredLogs.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8", fontSize: "12px" }}>
+              No logs found matching your filters
+            </div>
+          ) : (
+            <div style={styles.tableWrapper}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>#</th>
+                    <th style={styles.th}>User ID</th>
+                    <th style={styles.th}>Action</th>
+                    <th style={styles.th}>Status</th>
+                    <th style={styles.th}>Timestamp</th>
+                    <th style={styles.th}>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLogs.map((log, index) => {
+                    const statusStyle = getStatusStyle(log.status);
+                    const actionUpper = (log.action || "").toUpperCase();
+                    const isSuspicious = log.status === "FAILED" || 
+                                       actionUpper.includes("UNAUTHORIZED") || 
+                                       actionUpper.includes("TAMPER");
+
+                    return (
+                      <tr 
+                        key={log.id}
+                        style={isSuspicious ? (actionUpper.includes("TAMPER") ? styles.tamperRow : styles.suspiciousRow) : {}}
+                        onClick={() => {
+                          setSelectedLog(log);
+                          setShowModal(true);
+                        }}
+                      >
+                        <td style={styles.td}>{index + 1}</td>
+                        <td style={styles.td}><strong>#{log.user_id}</strong></td>
+                        <td style={styles.td}>
+                          <span style={{ display: "flex", alignItems: "center", gap: "6px", color: actionUpper.includes("TAMPER") ? "#fcd34d" : "#67e8f9" }}>
+                            {getActionIcon(log.action)} {log.action}
+                          </span>
+                        </td>
+                        <td style={styles.td}>
+                          <span style={{
+                            ...styles.statusBadge,
+                            backgroundColor: statusStyle.bg,
+                            color: statusStyle.color
+                          }}>
+                            {log.status}
+                          </span>
+                        </td>
+                        <td style={styles.td}>
+                          {new Date(log.created_at).toLocaleString()}
+                        </td>
+                        <td style={styles.td}>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedLog(log);
+                              setShowModal(true);
+                            }}
+                            style={{
+                              background: "rgba(103,232,249,0.12)",
+                              color: "#67e8f9",
+                              border: "none",
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                              fontSize: "10px",
+                              cursor: "pointer"
+                            }}
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {filteredLogs.length > 0 && (
+            <div style={{ marginTop: "20px", textAlign: "center" }}>
               <button
-                onClick={() => setShowModal(false)}
-                style={styles.closeBtn}
+                onClick={() => {
+                  const csvContent = [
+                    ["ID","User ID","Action","Status","Timestamp","Details"],
+                    ...filteredLogs.map(log => [
+                      log.id,
+                      log.user_id,
+                      log.action || "",
+                      log.status,
+                      new Date(log.created_at).toLocaleString(),
+                      log.details || ""
+                    ])
+                  ].map(row => row.join(",")).join("\n");
+
+                  const blob = new Blob([csvContent], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `security-logs-${new Date().toISOString().slice(0,10)}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                style={{
+                  background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
+                  color: "#0a0a14",
+                  padding: "8px 20px",
+                  border: "none",
+                  borderRadius: "10px",
+                  fontWeight: "600",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
               >
-                Close
+                <FaDownload size={12} /> Export Logs (CSV)
               </button>
             </div>
+          )}
+        </div>
+      </main>
+
+      {showModal && selectedLog && (
+        <div style={styles.modalOverlay} onClick={() => setShowModal(false)}>
+          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: "#f0f9ff", marginBottom: "16px", fontSize: "18px" }}>Log Details</h3>
+            
+            <div style={{ marginBottom: "12px", fontSize: "13px" }}>
+              <strong style={{ color: "#c4b5fd" }}>Log ID:</strong> #{selectedLog.id}
+            </div>
+            <div style={{ marginBottom: "12px", fontSize: "13px" }}>
+              <strong style={{ color: "#c4b5fd" }}>User ID:</strong> {selectedLog.user_id}
+            </div>
+            <div style={{ marginBottom: "12px", fontSize: "13px" }}>
+              <strong style={{ color: "#c4b5fd" }}>Action:</strong> {selectedLog.action}
+            </div>
+            <div style={{ marginBottom: "12px", fontSize: "13px" }}>
+              <strong style={{ color: "#c4b5fd" }}>Status:</strong> 
+              <span style={{ color: selectedLog.status === "SUCCESS" ? "#67e8f9" : "#fca5a5" }}>
+                {" "}{selectedLog.status}
+              </span>
+            </div>
+            <div style={{ marginBottom: "12px", fontSize: "13px" }}>
+              <strong style={{ color: "#c4b5fd" }}>Timestamp:</strong> 
+              {new Date(selectedLog.created_at).toLocaleString()}
+            </div>
+            {selectedLog.details && (
+              <div style={{ marginTop: "8px" }}>
+                <strong style={{ color: "#c4b5fd" }}>Details:</strong>
+                <div style={{ marginTop: "6px", color: "#e0f2fe", background: "rgba(30,30,60,0.6)", padding: "10px", borderRadius: "10px", fontSize: "12px" }}>
+                  {selectedLog.details}
+                </div>
+              </div>
+            )}
+
+            <button 
+              onClick={() => setShowModal(false)}
+              style={{
+                marginTop: "20px",
+                width: "100%",
+                padding: "10px",
+                background: "rgba(167,139,250,0.15)",
+                color: "#c4b5fd",
+                border: "1px solid rgba(167,139,250,0.3)",
+                borderRadius: "10px",
+                cursor: "pointer",
+                fontSize: "12px"
+              }}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
 
       <style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+        @keyframes holoScan {
+          0% { background-position: 0 0; }
+          100% { background-position: 80px 80px; }
         }
       `}</style>
     </div>

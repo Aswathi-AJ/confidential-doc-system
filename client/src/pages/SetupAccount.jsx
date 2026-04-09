@@ -1,71 +1,55 @@
-// client/src/pages/ResetPassword.jsx
+// client/src/pages/SetupAccount.jsx
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import API from "../services/api";
 import { 
   FaLock, 
   FaKey, 
   FaEye, 
-  FaEyeSlash 
+  FaEyeSlash, 
+  FaShieldAlt 
 } from "react-icons/fa";
+import { RiGovernmentFill } from "react-icons/ri";
 
-function ResetPassword() {
-  const [token, setToken] = useState(null);
-  const [newPassword, setNewPassword] = useState("");
+function SetupAccount() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
+  const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const urlToken = queryParams.get("token");
-    
-    if (urlToken) {
-      setToken(urlToken);
-    } else {
-      setError("Invalid reset link. No token provided.");
+    if (!token) {
+      setError("Invalid setup link. Please contact administrator.");
     }
-  }, []);
+  }, [token]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (newPassword !== confirmPassword) {
+    if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
     
-    if (newPassword.length < 6) {
+    if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
-
-    if (!token) {
-      setError("Invalid reset token");
-      return;
-    }
-
+    
     setLoading(true);
     setError("");
-    setMessage("");
-
+    
     try {
-      const response = await API.post("/auth/reset-password", { 
-        token, 
-        newPassword 
-      });
-      
-      setMessage(response.data.message || "Password reset successful!");
-      
-      setTimeout(() => {
-        navigate("/login");
-      }, 2500);
-      
+      const response = await API.post("/auth/setup-account", { token, password });
+      setSuccess(response.data.message || "Account setup completed successfully!");
+      setTimeout(() => navigate("/login"), 2500);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to reset password");
+      setError(err.response?.data?.message || "Setup failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -88,8 +72,8 @@ function ResetPassword() {
       position: "absolute",
       inset: 0,
       background: `
-        radial-gradient(circle at 30% 25%, rgba(103, 232, 249, 0.12) 0%, transparent 55%),
-        radial-gradient(circle at 70% 75%, rgba(167, 139, 250, 0.10) 0%, transparent 55%)
+        radial-gradient(circle at 30% 25%, rgba(103, 232, 249, 0.15) 0%, transparent 55%),
+        radial-gradient(circle at 70% 75%, rgba(167, 139, 250, 0.12) 0%, transparent 55%)
       `,
       zIndex: 1,
     },
@@ -99,27 +83,28 @@ function ResetPassword() {
       inset: 0,
       zIndex: 2,
       backgroundImage: `
-        linear-gradient(rgba(103,232,249,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(103,232,249,0.04) 1px, transparent 1px)
+        linear-gradient(rgba(103,232,249,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(103,232,249,0.05) 1px, transparent 1px)
       `,
-      backgroundSize: "40px 40px",
-      animation: "holoScan 15s linear infinite",
+      backgroundSize: "45px 45px",
+      animation: "holoScan 14s linear infinite",
       pointerEvents: "none",
     },
 
     card: {
       position: "relative",
       zIndex: 10,
-      background: "rgba(15, 15, 35, 0.92)",
+      background: "rgba(15, 15, 35, 0.90)",
       backdropFilter: "blur(24px)",
-      border: "1px solid rgba(103, 232, 249, 0.3)",
-      borderRadius: "24px",
-      padding: "28px 24px",
+      border: "1px solid rgba(167, 139, 250, 0.35)",
+      borderRadius: "28px",
+      padding: "32px 28px",
       width: "100%",
       maxWidth: "400px",
       boxShadow: `
-        0 20px 40px -12px rgba(0, 0, 0, 0.5),
-        0 0 0 1px rgba(103, 232, 249, 0.15)
+        0 30px 60px -20px rgba(0, 0, 0, 0.75),
+        0 0 0 1.5px rgba(167, 139, 250, 0.3),
+        inset 0 0 40px rgba(103, 232, 249, 0.08)
       `,
     },
 
@@ -127,75 +112,76 @@ function ResetPassword() {
       display: "inline-flex",
       alignItems: "center",
       gap: "8px",
-      background: "rgba(103, 232, 249, 0.12)",
-      color: "#67e8f9",
-      padding: "5px 14px",
-      borderRadius: "30px",
-      fontSize: "10px",
-      fontWeight: "600",
-      letterSpacing: "0.8px",
-      border: "1px solid rgba(103, 232, 249, 0.25)",
-      marginBottom: "20px",
+      background: "rgba(167, 139, 250, 0.18)",
+      color: "#c4b5fd",
+      padding: "6px 16px",
+      borderRadius: "50px",
+      fontSize: "11px",
+      fontWeight: "700",
+      letterSpacing: "1px",
+      border: "1px solid rgba(167, 139, 250, 0.4)",
+      marginBottom: "24px",
       width: "fit-content",
     },
 
     iconWrapper: {
-      width: "56px",
-      height: "56px",
+      width: "64px",
+      height: "64px",
       background: "linear-gradient(135deg, #7c3aed, #22d3ee, #a855f7)",
-      borderRadius: "16px",
+      borderRadius: "20px",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      margin: "0 auto 20px",
+      margin: "0 auto 24px",
       position: "relative",
-      boxShadow: "0 0 35px rgba(103, 232, 249, 0.35)",
+      boxShadow: "0 0 50px rgba(103, 232, 249, 0.5)",
     },
 
     iconGlow: {
       position: "absolute",
-      inset: "-10px",
-      background: "radial-gradient(circle, rgba(103,232,249,0.3) 0%, transparent 70%)",
-      borderRadius: "22px",
-      animation: "holoPulse 3s ease-in-out infinite",
+      inset: "-16px",
+      background: "radial-gradient(circle, rgba(103,232,249,0.45) 20%, transparent 70%)",
+      borderRadius: "inherit",
+      animation: "holoPulse 2.8s ease-in-out infinite",
       zIndex: -1,
     },
 
     title: {
-      fontSize: "22px",
-      fontWeight: "700",
+      fontSize: "24px",
+      fontWeight: "800",
       color: "#f0f9ff",
       textAlign: "center",
       marginBottom: "6px",
       letterSpacing: "-0.5px",
+      textShadow: "0 0 15px rgba(103, 232, 249, 0.3)",
     },
 
     subtitle: {
-      fontSize: "12px",
+      fontSize: "13px",
       color: "#a5b4fc",
       textAlign: "center",
-      marginBottom: "24px",
-      lineHeight: "1.4",
+      marginBottom: "28px",
+      lineHeight: "1.5",
     },
 
     errorAlert: {
-      background: "rgba(248, 113, 113, 0.12)",
-      border: "1px solid rgba(248, 113, 113, 0.3)",
-      color: "#fca5a5",
+      background: "rgba(248, 113, 113, 0.15)",
+      border: "1px solid rgba(248, 113, 113, 0.45)",
+      color: "#fda4af",
       padding: "10px 14px",
-      borderRadius: "10px",
-      marginBottom: "16px",
+      borderRadius: "14px",
+      marginBottom: "20px",
       fontSize: "12px",
       textAlign: "center",
     },
 
     successAlert: {
-      background: "rgba(103, 232, 249, 0.12)",
-      border: "1px solid rgba(103, 232, 249, 0.3)",
+      background: "rgba(103, 232, 249, 0.15)",
+      border: "1px solid rgba(103, 232, 249, 0.45)",
       color: "#67e8f9",
       padding: "10px 14px",
-      borderRadius: "10px",
-      marginBottom: "16px",
+      borderRadius: "14px",
+      marginBottom: "20px",
       fontSize: "12px",
       textAlign: "center",
     },
@@ -203,7 +189,7 @@ function ResetPassword() {
     form: {
       display: "flex",
       flexDirection: "column",
-      gap: "16px",
+      gap: "18px",
     },
 
     inputGroup: {
@@ -213,9 +199,12 @@ function ResetPassword() {
     },
 
     label: {
-      fontSize: "11px",
+      fontSize: "12px",
       fontWeight: "600",
       color: "#c4b5fd",
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
     },
 
     inputWrapper: {
@@ -224,52 +213,52 @@ function ResetPassword() {
 
     input: {
       width: "100%",
-      padding: "10px 12px 10px 40px",
-      fontSize: "13px",
+      padding: "12px 14px 12px 44px",
+      fontSize: "14px",
       backgroundColor: "rgba(15, 15, 35, 0.85)",
-      border: "1.5px solid rgba(129, 140, 248, 0.35)",
-      borderRadius: "10px",
+      border: "2px solid rgba(129, 140, 248, 0.4)",
+      borderRadius: "14px",
       color: "#f0f9ff",
       outline: "none",
-      transition: "all 0.3s ease",
+      transition: "all 0.35s ease",
       fontFamily: "inherit",
       boxSizing: "border-box",
     },
 
     inputIcon: {
       position: "absolute",
-      left: "14px",
+      left: "16px",
       top: "50%",
       transform: "translateY(-50%)",
       color: "#818cf8",
-      fontSize: "14px",
+      fontSize: "16px",
     },
 
     togglePassword: {
       position: "absolute",
-      right: "14px",
+      right: "16px",
       top: "50%",
       transform: "translateY(-50%)",
       background: "none",
       border: "none",
       color: "#a5b4fc",
-      fontSize: "15px",
+      fontSize: "18px",
       cursor: "pointer",
     },
 
     button: {
       background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
       color: "#0a0a14",
-      padding: "10px",
-      fontSize: "13px",
+      padding: "12px",
+      fontSize: "14px",
       fontWeight: "700",
       border: "none",
-      borderRadius: "10px",
+      borderRadius: "14px",
       cursor: "pointer",
-      marginTop: "4px",
+      marginTop: "6px",
       width: "100%",
       transition: "all 0.3s ease",
-      boxShadow: "0 4px 15px rgba(103, 232, 249, 0.3)",
+      boxShadow: "0 8px 25px rgba(103, 232, 249, 0.35)",
     },
 
     buttonDisabled: {
@@ -282,11 +271,11 @@ function ResetPassword() {
     link: {
       color: "#67e8f9",
       textDecoration: "none",
-      fontSize: "11px",
+      fontSize: "12px",
       fontWeight: "500",
       textAlign: "center",
-      marginTop: "16px",
       display: "block",
+      marginTop: "18px",
     }
   };
 
@@ -295,11 +284,18 @@ function ResetPassword() {
       <div style={styles.container}>
         <div style={styles.backgroundLayer} />
         <div style={styles.holographicGrid} />
-        <div style={styles.card}>
+        <div style={{
+          background: "rgba(15,15,35,0.95)",
+          border: "1px solid rgba(167,139,250,0.4)",
+          borderRadius: "24px",
+          padding: "32px 28px",
+          textAlign: "center",
+          maxWidth: "400px",
+          boxShadow: "0 25px 60px rgba(0,0,0,0.6)"
+        }}>
+          <FaShieldAlt size={44} color="#fda4af" style={{ marginBottom: "16px" }} />
           <div style={styles.errorAlert}>{error}</div>
-          <Link to="/forgot-password" style={styles.link}>
-            Request New Reset Link
-          </Link>
+          <Link to="/login" style={styles.link}>← Back to Login</Link>
         </div>
       </div>
     );
@@ -311,38 +307,47 @@ function ResetPassword() {
       <div style={styles.holographicGrid} />
 
       <div style={styles.card}>
-        <div style={styles.iconWrapper}>
-          <div style={styles.iconGlow} />
-          <FaKey size={26} color="#f0f9ff" />
+        <div style={styles.govBadge}>
+          <RiGovernmentFill size={13} />
+          GOVERNMENT OF INDIA • SECURE ONBOARDING
         </div>
 
-        <h1 style={styles.title}>Reset Password</h1>
+        <div style={styles.iconWrapper}>
+          <div style={styles.iconGlow} />
+          <FaKey size={30} color="#f0f9ff" />
+        </div>
+
+        <h1 style={styles.title}>Setup Your Account</h1>
         <p style={styles.subtitle}>
-          Create a new secure password for your account
+          Create a strong password to activate your secure access
         </p>
 
         {error && <div style={styles.errorAlert}>{error}</div>}
-        {message && <div style={styles.successAlert}>{message}</div>}
+        {success && <div style={styles.successAlert}>{success}</div>}
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.inputGroup}>
-            <label style={styles.label}>New Password</label>
+            <label style={styles.label}>
+              <FaLock size={12} /> New Password
+            </label>
             <div style={styles.inputWrapper}>
               <FaLock style={styles.inputIcon} />
               <input
                 type={showPassword ? "text" : "password"}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimum 6 characters"
                 style={styles.input}
                 required
                 onFocus={(e) => {
                   e.target.style.borderColor = "#67e8f9";
-                  e.target.style.boxShadow = "0 0 0 3px rgba(103, 232, 249, 0.15)";
+                  e.target.style.boxShadow = "0 0 0 4px rgba(103, 232, 249, 0.2)";
+                  e.target.style.backgroundColor = "rgba(15, 15, 35, 0.95)";
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = "rgba(129, 140, 248, 0.35)";
+                  e.target.style.borderColor = "rgba(129, 140, 248, 0.4)";
                   e.target.style.boxShadow = "none";
+                  e.target.style.backgroundColor = "rgba(15, 15, 35, 0.85)";
                 }}
               />
               <button
@@ -356,23 +361,27 @@ function ResetPassword() {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Confirm Password</label>
+            <label style={styles.label}>
+              <FaLock size={12} /> Confirm Password
+            </label>
             <div style={styles.inputWrapper}>
               <FaLock style={styles.inputIcon} />
               <input
                 type={showPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter new password"
+                placeholder="Confirm your password"
                 style={styles.input}
                 required
                 onFocus={(e) => {
                   e.target.style.borderColor = "#67e8f9";
-                  e.target.style.boxShadow = "0 0 0 3px rgba(103, 232, 249, 0.15)";
+                  e.target.style.boxShadow = "0 0 0 4px rgba(103, 232, 249, 0.2)";
+                  e.target.style.backgroundColor = "rgba(15, 15, 35, 0.95)";
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = "rgba(129, 140, 248, 0.35)";
+                  e.target.style.borderColor = "rgba(129, 140, 248, 0.4)";
                   e.target.style.boxShadow = "none";
+                  e.target.style.backgroundColor = "rgba(15, 15, 35, 0.85)";
                 }}
               />
             </div>
@@ -385,17 +394,17 @@ function ResetPassword() {
             onMouseEnter={(e) => {
               if (!loading) {
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 8px 20px rgba(103, 232, 249, 0.4)";
+                e.currentTarget.style.boxShadow = "0 12px 30px rgba(103, 232, 249, 0.45)";
               }
             }}
             onMouseLeave={(e) => {
               if (!loading) {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 15px rgba(103, 232, 249, 0.3)";
+                e.currentTarget.style.boxShadow = "0 8px 25px rgba(103, 232, 249, 0.35)";
               }
             }}
           >
-            {loading ? "Resetting Password..." : "Reset Password"}
+            {loading ? "Setting up secure account..." : "Complete Registration"}
           </button>
         </form>
 
@@ -407,12 +416,12 @@ function ResetPassword() {
       <style jsx>{`
         @keyframes holoScan {
           0% { background-position: 0 0; }
-          100% { background-position: 80px 80px; }
+          100% { background-position: 400px 400px; }
         }
 
         @keyframes holoPulse {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 0.7; transform: scale(1.08); }
+          0%, 100% { opacity: 0.6; transform: scale(1); }
+          50% { opacity: 0.9; transform: scale(1.15); }
         }
 
         input:focus {
@@ -423,4 +432,4 @@ function ResetPassword() {
   );
 }
 
-export default ResetPassword;
+export default SetupAccount;

@@ -23,10 +23,8 @@ const getTransporter = () => {
   return transporter;
 };
 
-const sendWelcomeEmail = async (email, name, password, role) => {
-  console.log("Preparing welcome email for:", email);
-  
-  const loginUrl = process.env.FRONTEND_URL || "http://localhost:3000/login";
+const sendSetupLinkEmail = async (email, name, setupUrl, role) => {
+  console.log("Preparing setup link email for:", email);
   
   const roleDisplay = {
     admin: "Administrator - Full system access",
@@ -37,7 +35,7 @@ const sendWelcomeEmail = async (email, name, password, role) => {
   const mailOptions = {
     from: `"Confidential Document System" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: "Welcome to Confidential Document System - Your Account Credentials",
+    subject: "Welcome to Confidential Document System - Complete Your Registration",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: #1a3c34; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
@@ -53,27 +51,27 @@ const sendWelcomeEmail = async (email, name, password, role) => {
           <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
             <h3 style="color: #1a3c34; margin-top: 0;">Account Details</h3>
             <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
-            <p style="margin: 5px 0;"><strong>Password:</strong> ${password}</p>
             <p style="margin: 5px 0;"><strong>Role:</strong> ${roleDisplay[role] || role}</p>
           </div>
           
           <div style="text-align: center; margin: 25px 0;">
-            <a href="${loginUrl}" 
+            <a href="${setupUrl}" 
                style="background-color: #1a5f7a; color: white; padding: 12px 30px; 
                       text-decoration: none; border-radius: 6px; display: inline-block;
                       font-weight: bold;">
-              Click Here to Login
+              Complete Registration & Set Password
             </a>
           </div>
           
           <div style="background-color: #fef3c7; padding: 12px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b;">
             <p style="margin: 0; color: #92400e; font-size: 14px;">
-              <strong>Important Security Instructions:</strong>
+              <strong>Security Instructions:</strong>
             </p>
             <ul style="margin: 8px 0 0 20px; color: #92400e; font-size: 13px;">
-              <li>Change your password immediately after first login</li>
-              <li>Do not share your credentials with anyone</li>
-              <li>Contact system administrator if you did not request this account</li>
+              <li>This link expires in 24 hours</li>
+              <li>Click the link to create your password</li>
+              <li>Never share your password with anyone</li>
+              <li>Contact administrator if you didn't request this account</li>
             </ul>
           </div>
           
@@ -91,66 +89,10 @@ const sendWelcomeEmail = async (email, name, password, role) => {
   try {
     const transporterInstance = getTransporter();
     const info = await transporterInstance.sendMail(mailOptions);
-    console.log("Welcome email sent to:", email, "Message ID:", info.messageId);
+    console.log("Setup link email sent to:", email, "Message ID:", info.messageId);
     return true;
   } catch (error) {
-    console.error("Welcome email failed:", error.message);
-    return false;
-  }
-};
-
-const sendPasswordResetEmail = async (email, name, newPassword) => {
-  console.log("Preparing password reset email for:", email);
-  
-  const loginUrl = process.env.FRONTEND_URL || "http://localhost:3000/login";
-
-  const mailOptions = {
-    from: `"Confidential Document System" <${process.env.EMAIL_USER}>`,
-    to: email,
-    subject: "Your Password Has Been Reset",
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background-color: #1a3c34; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-          <h1 style="color: white; margin: 0;">Password Reset Notification</h1>
-        </div>
-        
-        <div style="background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 8px 8px;">
-          <h2 style="color: #1a3c34;">Hello ${name},</h2>
-          
-          <p>Your password has been reset by the system administrator.</p>
-          
-          <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #1a3c34; margin-top: 0;">New Login Credentials</h3>
-            <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
-            <p style="margin: 5px 0;"><strong>New Password:</strong> ${newPassword}</p>
-          </div>
-          
-          <div style="text-align: center; margin: 25px 0;">
-            <a href="${loginUrl}" 
-               style="background-color: #1a5f7a; color: white; padding: 12px 30px; 
-                      text-decoration: none; border-radius: 6px; display: inline-block;
-                      font-weight: bold;">
-              Login to Your Account
-            </a>
-          </div>
-          
-          <div style="background-color: #fee2e2; padding: 12px; border-radius: 6px; margin: 20px 0;">
-            <p style="margin: 0; color: #991b1b; font-size: 14px;">
-              For security reasons, we strongly recommend changing this password after login.
-            </p>
-          </div>
-        </div>
-      </div>
-    `
-  };
-
-  try {
-    const transporterInstance = getTransporter();
-    const info = await transporterInstance.sendMail(mailOptions);
-    console.log("Password reset email sent to:", email, "Message ID:", info.messageId);
-    return true;
-  } catch (error) {
-    console.error("Password reset email failed:", error.message);
+    console.error("Setup email failed:", error.message);
     return false;
   }
 };
@@ -188,8 +130,7 @@ const sendPasswordResetLink = async (email, name, resetUrl) => {
           
           <hr style="margin: 20px 0;">
           <p style="color: #64748b; font-size: 12px; text-align: center;">
-            Confidential Document System<br>
-            Government of India | Secure Portal
+            Confidential Document System
           </p>
         </div>
       </div>
@@ -207,4 +148,6 @@ const sendPasswordResetLink = async (email, name, resetUrl) => {
   }
 };
 
-module.exports = { sendWelcomeEmail, sendPasswordResetEmail, sendPasswordResetLink };
+// Remove sendWelcomeEmail and sendPasswordResetEmail (no longer needed)
+// Keep only the secure functions
+module.exports = { sendSetupLinkEmail, sendPasswordResetLink };

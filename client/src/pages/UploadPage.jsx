@@ -2,6 +2,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
+import Toast from "../components/Toast";
+import { 
+  FaUpload, 
+  FaShieldAlt, 
+
+} from "react-icons/fa";
+import { MdSecurity } from "react-icons/md";
+import { RiGovernmentFill } from "react-icons/ri";
 
 function UploadPage() {
   const navigate = useNavigate();
@@ -12,10 +20,31 @@ function UploadPage() {
   const [dragOver, setDragOver] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [user, setUser] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const isMobile = windowWidth < 768;
 
-  // Get user from localStorage
+  const allowedFileTypes = [
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "text/plain"
+  ];
+
+  const acceptTypes = ".pdf,.jpg,.jpeg,.png,.txt";
+
+  const getFileExtension = (filename) => {
+    return filename.split('.').pop().toUpperCase();
+  };
+
+  const getFileIcon = (file) => {
+    const type = file.type;
+    if (type === "application/pdf") return "📄";
+    if (type.includes("image")) return "🖼️";
+    if (type.includes("text")) return "📃";
+    return "📁";
+  };
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (userData) {
@@ -25,34 +54,30 @@ function UploadPage() {
     }
   }, [navigate]);
 
-  // Handle window resize
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Handle file selection
   const handleFileSelect = (file) => {
     setError("");
     setSuccess("");
     
-    // Check if file exists
     if (!file) {
-      setError("Please select a file");
+      setToast({ message: "Please select a file", type: "error" });
       return;
     }
     
-    // Check file type (PDF only)
-    if (file.type !== "application/pdf") {
-      setError("❌ Only PDF files are allowed");
+    if (!allowedFileTypes.includes(file.type)) {
+      setToast({ message: "Only PDF, JPG, PNG, and TXT files are allowed", type: "error" });
       setSelectedFile(null);
       return;
     }
     
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError("❌ File size must be less than 5MB");
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setToast({ message: `File size must be less than 50MB. Current: ${(file.size / (1024 * 1024)).toFixed(2)}MB`, type: "error" });
       setSelectedFile(null);
       return;
     }
@@ -60,10 +85,9 @@ function UploadPage() {
     setSelectedFile(file);
   };
 
-  // Handle upload
   const handleUpload = async () => {
     if (!selectedFile) {
-      setError("Please select a file first");
+      setToast({ message: "Please select a file first", type: "error" });
       return;
     }
     
@@ -76,37 +100,28 @@ function UploadPage() {
     
     try {
       await API.post("/documents/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
       
-      setSuccess("✅ Document uploaded and encrypted successfully!");
+      setToast({ message: "Document uploaded and encrypted successfully!", type: "success" });
       setSelectedFile(null);
       
-      // Reset file input
       const fileInput = document.getElementById("fileInput");
       if (fileInput) fileInput.value = "";
       
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(""), 3000);
-      
-      // Optional: Redirect to documents page after 1 second
       setTimeout(() => {
         if (window.confirm("Document uploaded successfully! Go to Documents page?")) {
           navigate("/documents");
         }
-      }, 500);
+      }, 800);
       
     } catch (err) {
-      console.error("Upload error:", err);
-      setError(err.response?.data?.message || "Upload failed. Please try again.");
+      setToast({ message: err.response?.data?.message || "Upload failed. Please try again.", type: "error" });
     } finally {
       setUploading(false);
     }
   };
 
-  // Handle drag and drop
   const handleDragOver = (e) => {
     e.preventDefault();
     setDragOver(true);
@@ -124,358 +139,422 @@ function UploadPage() {
     handleFileSelect(file);
   };
 
-  // ✅ STYLES DEFINED HERE - BEFORE THEY ARE USED
-  const styles = {
-    container: {
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-      fontFamily: "'Segoe UI', Roboto, sans-serif",
-      padding: isMobile ? "16px" : "24px"
-    },
-    header: {
-      backgroundColor: "#1a3c34",
-      color: "white",
-      padding: isMobile ? "16px" : "20px 32px",
-      borderRadius: "16px",
-      marginBottom: "24px",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      flexWrap: "wrap",
-      gap: "16px"
-    },
-    headerTitle: {
-      fontSize: isMobile ? "18px" : "24px",
-      fontWeight: "700"
-    },
-    headerSubtitle: {
-      fontSize: isMobile ? "12px" : "14px",
-      opacity: 0.8,
-      marginTop: "4px"
-    },
-    backBtn: {
-      backgroundColor: "rgba(255,255,255,0.2)",
-      border: "none",
-      padding: "8px 16px",
-      borderRadius: "8px",
-      color: "white",
-      cursor: "pointer",
-      fontSize: "14px",
-      transition: "background 0.3s"
-    },
-    card: {
-      maxWidth: "600px",
-      margin: "0 auto",
-      backgroundColor: "white",
-      borderRadius: "24px",
-      padding: isMobile ? "24px" : "32px",
-      boxShadow: "0 20px 40px rgba(0,0,0,0.1)"
-    },
-    title: {
-      fontSize: isMobile ? "24px" : "28px",
-      fontWeight: "700",
-      color: "#1a3c34",
-      marginBottom: "8px",
-      textAlign: "center"
-    },
-    subtitle: {
-      fontSize: "14px",
-      color: "#6b7280",
-      textAlign: "center",
-      marginBottom: "24px"
-    },
-    uploadArea: {
-      border: `2px dashed ${dragOver ? "#1a5f7a" : "#cbd5e1"}`,
-      borderRadius: "16px",
-      padding: isMobile ? "30px 20px" : "40px",
-      textAlign: "center",
-      cursor: "pointer",
-      transition: "all 0.3s",
-      backgroundColor: dragOver ? "#f0f9ff" : "#fafbfc",
-      marginBottom: "20px"
-    },
-    uploadIcon: {
-      fontSize: isMobile ? "48px" : "64px",
-      marginBottom: "16px"
-    },
-    uploadText: {
-      fontSize: isMobile ? "14px" : "16px",
-      color: "#64748b",
-      marginBottom: "8px"
-    },
-    uploadHint: {
-      fontSize: "12px",
-      color: "#94a3b8",
-      marginBottom: "16px"
-    },
-    selectBtn: {
-      backgroundColor: "#1a5f7a",
-      color: "white",
-      padding: "10px 20px",
-      borderRadius: "8px",
-      cursor: "pointer",
-      display: "inline-block",
-      fontSize: "14px",
-      fontWeight: "500",
-      border: "none",
-      transition: "background 0.3s"
-    },
-    fileInfo: {
-      backgroundColor: "#f1f5f9",
-      padding: "16px",
-      borderRadius: "12px",
-      marginBottom: "20px"
-    },
-    fileName: {
-      fontSize: "14px",
-      fontWeight: "500",
-      color: "#1e293b",
-      wordBreak: "break-all"
-    },
-    fileSize: {
-      fontSize: "12px",
-      color: "#64748b",
-      marginTop: "4px"
-    },
-    securityBox: {
-      backgroundColor: "#f0fdf4",
-      padding: "16px",
-      borderRadius: "12px",
-      marginBottom: "20px",
-      borderLeft: "4px solid #22c55e"
-    },
-    securityTitle: {
-      fontSize: "14px",
-      fontWeight: "600",
-      color: "#166534",
-      marginBottom: "8px"
-    },
-    securityList: {
-      fontSize: "12px",
-      color: "#15803d",
-      marginLeft: "20px",
-      lineHeight: "1.6"
-    },
-    errorAlert: {
-      backgroundColor: "#fee2e2",
-      color: "#dc2626",
-      padding: "12px",
-      borderRadius: "10px",
-      marginBottom: "20px",
-      fontSize: "14px",
-      borderLeft: "4px solid #dc2626"
-    },
-    successAlert: {
-      backgroundColor: "#dcfce7",
-      color: "#166534",
-      padding: "12px",
-      borderRadius: "10px",
-      marginBottom: "20px",
-      fontSize: "14px",
-      borderLeft: "4px solid #22c55e"
-    },
-    uploadBtn: {
-      width: "100%",
-      padding: "14px",
-      backgroundColor: "#1a5f7a",
-      color: "white",
-      border: "none",
-      borderRadius: "10px",
-      fontSize: "16px",
-      fontWeight: "600",
-      cursor: "pointer",
-      transition: "background 0.3s",
-      marginTop: "8px"
-    },
-    uploadBtnDisabled: {
-      width: "100%",
-      padding: "14px",
-      backgroundColor: "#9ca3af",
-      color: "white",
-      border: "none",
-      borderRadius: "10px",
-      fontSize: "16px",
-      fontWeight: "600",
-      cursor: "not-allowed",
-      marginTop: "8px"
-    },
-    requirements: {
-      marginTop: "20px",
-      paddingTop: "20px",
-      borderTop: "1px solid #e2e8f0"
-    },
-    reqTitle: {
-      fontSize: "12px",
-      fontWeight: "600",
-      color: "#64748b",
-      marginBottom: "8px"
-    },
-    reqList: {
-      fontSize: "11px",
-      color: "#94a3b8",
-      marginLeft: "20px",
-      lineHeight: "1.6"
-    },
-    accessDenied: {
-      textAlign: "center",
-      backgroundColor: "white",
-      borderRadius: "24px",
-      padding: "48px",
-      maxWidth: "500px",
-      margin: "100px auto",
-      boxShadow: "0 20px 40px rgba(0,0,0,0.1)"
-    }
-  };
-
   const role = user?.role;
   
-  // ✅ FIX: Prevent flash of "Access Denied" while loading user
   if (!user) {
-    return <div>Loading...</div>; // or return a loading spinner
+    return <div style={{ minHeight: "100vh", background: "#0a0a14", display: "flex", alignItems: "center", justifyContent: "center", color: "#67e8f9" }}>Loading...</div>;
   }
   
-  // Check permission
   if (role !== "admin" && role !== "officer") {
     return (
-      <div style={styles.container}>
-        <div style={styles.accessDenied}>
-          <div style={{ fontSize: "64px", marginBottom: "20px" }}>🚫</div>
-          <h2>Access Denied</h2>
-          <p>Only Administrators and Officers can upload documents.</p>
-          <button onClick={() => navigate("/dashboard")} style={styles.backBtn}>
-            ← Back to Dashboard
+      <div style={{ minHeight: "100vh", background: "#0a0a14", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{
+          background: "rgba(15,15,35,0.95)",
+          border: "1px solid rgba(167,139,250,0.4)",
+          borderRadius: "20px",
+          padding: "32px 24px",
+          textAlign: "center",
+          maxWidth: "400px",
+          boxShadow: "0 25px 50px rgba(0,0,0,0.5)"
+        }}>
+          <FaShieldAlt size={48} color="#fda4af" style={{ marginBottom: "16px" }} />
+          <h2 style={{ color: "#f0f9ff", fontSize: "22px", marginBottom: "8px" }}>Access Denied</h2>
+          <p style={{ color: "#a5b4fc", margin: "12px 0", fontSize: "13px" }}>
+            Only Administrators and Officers can upload documents.
+          </p>
+          <button 
+            onClick={() => navigate("/dashboard")}
+            style={{
+              background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
+              color: "#0a0a14",
+              padding: "10px 28px",
+              border: "none",
+              borderRadius: "10px",
+              fontWeight: "600",
+              fontSize: "13px",
+              cursor: "pointer"
+            }}
+          >
+            Back to Dashboard
           </button>
         </div>
       </div>
     );
   }
 
+  const styles = {
+    container: {
+      minHeight: "100vh",
+      background: "#0a0a14",
+      color: "#f0f9ff",
+      fontFamily: "'Inter', system-ui, sans-serif",
+      position: "relative",
+    },
+
+    backgroundLayer: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: `
+        radial-gradient(circle at 30% 25%, rgba(103, 232, 249, 0.12) 0%, transparent 55%),
+        radial-gradient(circle at 70% 75%, rgba(167, 139, 250, 0.10) 0%, transparent 55%)
+      `,
+      zIndex: 0,
+    },
+
+    holographicGrid: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundImage: `
+        linear-gradient(rgba(103,232,249,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(103,232,249,0.04) 1px, transparent 1px)
+      `,
+      backgroundSize: "40px 40px",
+      animation: "holoScan 15s linear infinite",
+      pointerEvents: "none",
+      zIndex: 0,
+    },
+
+    header: {
+      background: "rgba(15, 15, 35, 0.96)",
+      backdropFilter: "blur(16px)",
+      borderBottom: "1px solid rgba(167, 139, 250, 0.25)",
+      padding: isMobile ? "12px 16px" : "14px 32px",
+      position: "sticky",
+      top: 0,
+      zIndex: 100,
+    },
+
+    headerContent: {
+      maxWidth: "1280px",
+      margin: "0 auto",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: "12px",
+    },
+
+    logoSection: {
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+    },
+
+    logo: {
+      fontSize: isMobile ? "16px" : "20px",
+      fontWeight: "800",
+      background: "linear-gradient(90deg, #67e8f9, #c4b5fd)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+    },
+
+    main: {
+      position: "relative",
+      zIndex: 1,
+      maxWidth: "600px",
+      margin: "0 auto",
+      padding: isMobile ? "20px 16px" : "30px 24px",
+    },
+
+    card: {
+      background: "rgba(15, 15, 35, 0.90)",
+      backdropFilter: "blur(20px)",
+      border: "1px solid rgba(167, 139, 250, 0.3)",
+      borderRadius: "20px",
+      padding: isMobile ? "20px" : "24px",
+      boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
+    },
+
+    title: {
+      fontSize: isMobile ? "22px" : "24px",
+      fontWeight: "700",
+      color: "#f0f9ff",
+      textAlign: "center",
+      marginBottom: "6px",
+    },
+
+    subtitle: {
+      fontSize: "11px",
+      color: "#a5b4fc",
+      textAlign: "center",
+      marginBottom: "20px",
+    },
+
+    uploadArea: {
+      border: `2px dashed ${dragOver ? "#67e8f9" : "rgba(167, 139, 250, 0.4)"}`,
+      borderRadius: "14px",
+      padding: isMobile ? "25px 16px" : "32px 24px",
+      textAlign: "center",
+      cursor: "pointer",
+      transition: "all 0.3s ease",
+      background: dragOver ? "rgba(103, 232, 249, 0.08)" : "rgba(15, 15, 35, 0.6)",
+      marginBottom: "20px",
+    },
+
+    uploadIcon: {
+      fontSize: "40px",
+      marginBottom: "10px",
+      color: "#67e8f9",
+    },
+
+    uploadText: {
+      fontSize: "13px",
+      fontWeight: "600",
+      color: "#e0f2fe",
+      marginBottom: "5px",
+    },
+
+    uploadHint: {
+      fontSize: "10px",
+      color: "#94a3b8",
+      marginBottom: "14px",
+    },
+
+    fileInfo: {
+      background: "rgba(30, 30, 60, 0.7)",
+      border: "1px solid rgba(167, 139, 250, 0.3)",
+      padding: "12px",
+      borderRadius: "10px",
+      marginBottom: "20px",
+    },
+
+    fileName: {
+      fontSize: "12px",
+      fontWeight: "600",
+      color: "#e0f2fe",
+      wordBreak: "break-all",
+    },
+
+    fileSize: {
+      fontSize: "10px",
+      color: "#94a3b8",
+      marginTop: "3px",
+    },
+
+    securityBox: {
+      background: "rgba(30, 30, 60, 0.6)",
+      border: "1px solid rgba(167, 139, 250, 0.25)",
+      padding: "14px",
+      borderRadius: "10px",
+      marginBottom: "20px",
+    },
+
+    securityTitle: {
+      fontSize: "12px",
+      fontWeight: "700",
+      color: "#c4b5fd",
+      marginBottom: "8px",
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+    },
+
+    securityList: {
+      fontSize: "10px",
+      color: "#a5b4fc",
+      lineHeight: "1.6",
+      marginLeft: "18px",
+    },
+
+    errorAlert: {
+      background: "rgba(248, 113, 113, 0.12)",
+      border: "1px solid rgba(248, 113, 113, 0.4)",
+      color: "#fca5a5",
+      padding: "10px 14px",
+      borderRadius: "10px",
+      marginBottom: "16px",
+      fontSize: "11px",
+    },
+
+    successAlert: {
+      background: "rgba(103, 232, 249, 0.12)",
+      border: "1px solid rgba(103, 232, 249, 0.4)",
+      color: "#67e8f9",
+      padding: "10px 14px",
+      borderRadius: "10px",
+      marginBottom: "16px",
+      fontSize: "11px",
+    },
+
+    uploadBtn: {
+      width: "100%",
+      padding: "10px",
+      background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
+      color: "#0a0a14",
+      border: "none",
+      borderRadius: "10px",
+      fontSize: "13px",
+      fontWeight: "700",
+      cursor: "pointer",
+      transition: "all 0.3s ease",
+    },
+
+    uploadBtnDisabled: {
+      width: "100%",
+      padding: "10px",
+      background: "#475569",
+      color: "#94a3b8",
+      border: "none",
+      borderRadius: "10px",
+      fontSize: "13px",
+      fontWeight: "600",
+      cursor: "not-allowed",
+    },
+
+    backButton: {
+      background: "rgba(167, 139, 250, 0.12)",
+      color: "#c4b5fd",
+      border: "1px solid rgba(167, 139, 250, 0.3)",
+      padding: "5px 12px",
+      borderRadius: "8px",
+      cursor: "pointer",
+      fontWeight: "500",
+      fontSize: "11px",
+      transition: "all 0.3s ease",
+      display: "flex",
+      alignItems: "center",
+      gap: "5px",
+    }
+  };
+
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div>
-          <div style={styles.headerTitle}>🔐 Confidential Document System</div>
-          <div style={styles.headerSubtitle}>Secure AES-256 Encrypted Upload</div>
-        </div>
-        <div style={{ display: "flex", gap: "8px" }}>
-          <button 
-            onClick={() => navigate("/documents")} 
-            style={styles.backBtn}
-            onMouseEnter={e => e.target.style.backgroundColor = "rgba(255,255,255,0.3)"}
-            onMouseLeave={e => e.target.style.backgroundColor = "rgba(255,255,255,0.2)"}
-          >
-            📋 My Documents
-          </button>
-          <button 
-            onClick={() => navigate("/dashboard")} 
-            style={styles.backBtn}
-            onMouseEnter={e => e.target.style.backgroundColor = "rgba(255,255,255,0.3)"}
-            onMouseLeave={e => e.target.style.backgroundColor = "rgba(255,255,255,0.2)"}
-          >
-            ← Dashboard
-          </button>
-        </div>
-      </div>
+    <>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* Upload Card */}
-      <div style={styles.card}>
-        <h1 style={styles.title}>📄 Upload Document</h1>
-        <p style={styles.subtitle}>Securely upload encrypted government documents</p>
+      <div style={styles.container}>
+        <div style={styles.backgroundLayer} />
+        <div style={styles.holographicGrid} />
 
-        {/* Error/Success Messages */}
-        {error && <div style={styles.errorAlert}>{error}</div>}
-        {success && <div style={styles.successAlert}>{success}</div>}
+        <header style={styles.header}>
+          <div style={styles.headerContent}>
+            <div style={styles.logoSection}>
+              <RiGovernmentFill size={18} color="#67e8f9" />
+              <div>
+                <div style={styles.logo}>Confidential Document System</div>
+                <div style={{ fontSize: "9px", color: "#a5b4fc" }}>Secure Document Upload</div>
+              </div>
+            </div>
 
-        {/* Upload Area */}
-        <div
-          style={styles.uploadArea}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={() => document.getElementById("fileInput").click()}
-        >
-          <div style={styles.uploadIcon}>📁</div>
-          <div style={styles.uploadText}>
-            {dragOver ? "Drop your PDF here" : "Click or drag PDF file here"}
-          </div>
-          <div style={styles.uploadHint}>Only PDF files, Max 5MB</div>
-          <input
-            id="fileInput"
-            type="file"
-            accept=".pdf,application/pdf"
-            onChange={(e) => handleFileSelect(e.target.files[0])}
-            style={{ display: "none" }}
-          />
-          <button
-            style={styles.selectBtn}
-            onMouseEnter={e => e.target.style.backgroundColor = "#0e4a60"}
-            onMouseLeave={e => e.target.style.backgroundColor = "#1a5f7a"}
-            onClick={(e) => {
-              e.stopPropagation();
-              document.getElementById("fileInput").click();
-            }}
-          >
-            Select File
-          </button>
-        </div>
-
-        {/* Selected File Info */}
-        {selectedFile && (
-          <div style={styles.fileInfo}>
-            <div style={styles.fileName}>📄 {selectedFile.name}</div>
-            <div style={styles.fileSize}>
-              Size: {(selectedFile.size / 1024).toFixed(2)} KB
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button 
+                onClick={() => navigate("/dashboard")} 
+                style={styles.backButton}
+              >
+                Dashboard
+              </button>
+              <button 
+                onClick={() => navigate("/documents")} 
+                style={styles.backButton}
+              >
+                My Documents
+              </button>
             </div>
           </div>
-        )}
+        </header>
 
-        {/* Security Information */}
-        <div style={styles.securityBox}>
-          <div style={styles.securityTitle}>🔐 Security Features (Active)</div>
-          <ul style={styles.securityList}>
-            <li>AES-256-GCM encryption before storage</li>
-            <li>Tamper detection with authentication tags</li>
-            <li>Backup encryption for data recovery</li>
-            <li>Audit logging of all uploads</li>
-          </ul>
-        </div>
+        <main style={styles.main}>
+          <div style={styles.card}>
+            <h1 style={styles.title}>Upload Document</h1>
+            <p style={styles.subtitle}>
+              Files are encrypted with AES-256-GCM before storage
+            </p>
 
-        {/* Upload Button */}
-        <button
-          onClick={handleUpload}
-          disabled={!selectedFile || uploading}
-          style={(!selectedFile || uploading) ? styles.uploadBtnDisabled : styles.uploadBtn}
-          onMouseEnter={e => {
-            if (!(!selectedFile || uploading)) {
-              e.target.style.backgroundColor = "#0e4a60";
-            }
-          }}
-          onMouseLeave={e => {
-            if (!(!selectedFile || uploading)) {
-              e.target.style.backgroundColor = "#1a5f7a";
-            }
-          }}
-        >
-          {uploading ? (
-            "⏳ Encrypting & Uploading..."
-          ) : (
-            "🔐 Encrypt & Upload Securely"
-          )}
-        </button>
+            {error && <div style={styles.errorAlert}>{error}</div>}
+            {success && <div style={styles.successAlert}>{success}</div>}
 
-        {/* Requirements */}
-        <div style={styles.requirements}>
-          <div style={styles.reqTitle}>📋 Requirements:</div>
-          <ul style={styles.reqList}>
-            <li>Only PDF files are allowed</li>
-            <li>Maximum file size: 5MB</li>
-            <li>Files are encrypted before storage</li>
-            <li>Upload history is logged for audit</li>
-          </ul>
-        </div>
+            <div
+              style={styles.uploadArea}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById("fileInput").click()}
+            >
+              <div style={styles.uploadIcon}>
+                {selectedFile ? getFileIcon(selectedFile) : <FaUpload />}
+              </div>
+              <div style={styles.uploadText}>
+                {dragOver ? "Drop file to upload" : selectedFile ? "File Ready" : "Click or Drag File Here"}
+              </div>
+              <div style={styles.uploadHint}>
+                Supported: PDF, JPG, PNG, TXT • Max 50MB
+              </div>
+
+              <input
+                id="fileInput"
+                type="file"
+                accept={acceptTypes}
+                onChange={(e) => handleFileSelect(e.target.files[0])}
+                style={{ display: "none" }}
+              />
+
+              <button
+                style={{
+                  background: "rgba(167, 139, 250, 0.15)",
+                  color: "#c4b5fd",
+                  padding: "6px 16px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(167, 139, 250, 0.3)",
+                  fontWeight: "500",
+                  fontSize: "11px",
+                  cursor: "pointer",
+                  marginTop: "8px"
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  document.getElementById("fileInput").click();
+                }}
+              >
+                Select File
+              </button>
+            </div>
+
+            {selectedFile && (
+              <div style={styles.fileInfo}>
+                <div style={styles.fileName}>
+                  {getFileIcon(selectedFile)} {selectedFile.name}
+                </div>
+                <div style={styles.fileSize}>
+                  {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • {getFileExtension(selectedFile.name)}
+                </div>
+              </div>
+            )}
+
+            <div style={styles.securityBox}>
+              <div style={styles.securityTitle}>
+                <MdSecurity size={13} /> Security Features Active
+              </div>
+              <ul style={styles.securityList}>
+                <li>AES-256-GCM encryption before storage</li>
+                <li>Tamper detection with authentication tags</li>
+                <li>Backup encryption for data recovery</li>
+                <li>Audit logging of all uploads</li>
+              </ul>
+            </div>
+
+            <button
+              onClick={handleUpload}
+              disabled={!selectedFile || uploading}
+              style={(!selectedFile || uploading) ? styles.uploadBtnDisabled : styles.uploadBtn}
+            >
+              {uploading ? "Encrypting & Uploading..." : "Encrypt & Upload Securely"}
+            </button>
+          </div>
+        </main>
+
+        <style jsx>{`
+          @keyframes holoScan {
+            0% { background-position: 0 0; }
+            100% { background-position: 80px 80px; }
+          }
+        `}</style>
       </div>
-    </div>
+    </>
   );
 }
 

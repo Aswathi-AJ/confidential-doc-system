@@ -4,12 +4,11 @@ const db = require("../config/db");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const verifyToken = require("../middleware/authMiddleware");
-const { sendPasswordResetLink } = require("../utils/mailer");
+const { sendPasswordResetLink, sendSetupLinkEmail } = require("../utils/mailer");
+const logActivity = require("../utils/logger");  // ✅ ADD THIS IMPORT
 const router = express.Router();
 
-// ================= REGISTER (Disabled for security - only admin can create users) =================
-// This route is intentionally disabled to prevent public registration
-// Only admin can create users through /api/admin/users
+// ================= REGISTER (Disabled - Only Admin can create users) =================
 router.post("/register", async (req, res) => {
   return res.status(403).json({ 
     message: "Public registration is disabled. Only administrators can create accounts." 
@@ -45,14 +44,12 @@ router.post("/login", async (req, res) => {
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
-      // Generate JWT token
       const token = jwt.sign(
         { id: user.id, role: user.role, email: user.email },
         process.env.JWT_SECRET || "your_jwt_secret_key",
-        { expiresIn: "8h" }  // Increased from 15m to 8h for better UX
+        { expiresIn: "8h" }
       );
 
-      // Return user data (without password)
       res.json({
         message: "Login successful",
         token,
@@ -88,7 +85,6 @@ router.post("/forgot-password", async (req, res) => {
     }
 
     if (results.length === 0) {
-      // Don't reveal that email doesn't exist for security
       return res.status(200).json({ 
         message: "If your email is registered, you will receive a reset link." 
       });
@@ -96,11 +92,9 @@ router.post("/forgot-password", async (req, res) => {
 
     const user = results[0];
     
-    // Generate reset token (expires in 1 hour)
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetExpiry = new Date(Date.now() + 3600000); // 1 hour from now
+    const resetExpiry = new Date(Date.now() + 3600000);
 
-    // Save token in database
     const updateSql = "UPDATE users SET reset_token = ?, reset_expiry = ? WHERE id = ?";
     
     db.query(updateSql, [resetToken, resetExpiry, user.id], async (updateErr) => {
@@ -109,10 +103,7 @@ router.post("/forgot-password", async (req, res) => {
         return res.status(500).json({ message: "Failed to process request" });
       }
 
-      // Generate reset URL (frontend page)
       const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password?token=${resetToken}`;
-      
-      // Send email with reset link
       const emailSent = await sendPasswordResetLink(user.email, user.name, resetUrl);
 
       res.json({
@@ -136,7 +127,6 @@ router.post("/reset-password", async (req, res) => {
     return res.status(400).json({ message: "Password must be at least 6 characters" });
   }
 
-  // Find user with valid token (not expired)
   const sql = "SELECT id FROM users WHERE reset_token = ? AND reset_expiry > NOW()";
   
   db.query(sql, [token], async (err, results) => {
@@ -154,7 +144,6 @@ router.post("/reset-password", async (req, res) => {
     try {
       const hashedPassword = await argon2.hash(newPassword);
       
-      // Update password and clear reset token
       const updateSql = "UPDATE users SET password = ?, reset_token = NULL, reset_expiry = NULL WHERE id = ?";
       
       db.query(updateSql, [hashedPassword, user.id], (updateErr) => {
@@ -166,6 +155,56 @@ router.post("/reset-password", async (req, res) => {
         res.json({ message: "Password reset successful. You can now login with your new password." });
       });
 
+    } catch (error) {
+      console.error("Hash error:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+});
+
+// ================= SETUP ACCOUNT (First time password creation) =================
+router.post("/setup-account", async (req, res) => {
+  const { token, password } = req.body;
+  
+  if (!token || !password) {
+    return res.status(400).json({ message: "Token and password are required" });
+  }
+  
+  if (password.length < 6) {
+    return res.status(400).json({ message: "Password must be at least 6 characters" });
+  }
+  
+  const sql = "SELECT id FROM users WHERE setup_token = ? AND setup_expiry > NOW()";
+  
+  db.query(sql, [token], async (err, results) => {
+    if (err) {
+      console.error("Setup error:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+    
+    if (results.length === 0) {
+      return res.status(400).json({ message: "Invalid or expired setup link. Please contact administrator." });
+    }
+    
+    const user = results[0];
+    
+    try {
+      const hashedPassword = await argon2.hash(password);
+      
+      const updateSql = "UPDATE users SET password = ?, setup_token = NULL, setup_expiry = NULL WHERE id = ?";
+      
+      db.query(updateSql, [hashedPassword, user.id], (updateErr) => {
+        if (updateErr) {
+          console.error("Update error:", updateErr);
+          return res.status(500).json({ message: "Failed to set up account" });
+        }
+        
+        // ✅ logActivity is now defined
+        logActivity(user.id, "ACCOUNT_SETUP", "SUCCESS", "User completed registration");
+        
+        res.json({ message: "Account setup successful! You can now login with your password." });
+      });
+      
     } catch (error) {
       console.error("Hash error:", error);
       res.status(500).json({ message: "Server error" });
@@ -199,17 +238,13 @@ router.post("/change-password", verifyToken, async (req, res) => {
     }
 
     try {
-      // Verify current password
       const isValid = await argon2.verify(results[0].password, currentPassword);
       
       if (!isValid) {
         return res.status(401).json({ message: "Current password is incorrect" });
       }
 
-      // Hash new password
       const hashedPassword = await argon2.hash(newPassword);
-      
-      // Update password
       const updateSql = "UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?";
       
       db.query(updateSql, [hashedPassword, userId], (updateErr) => {
@@ -218,6 +253,7 @@ router.post("/change-password", verifyToken, async (req, res) => {
           return res.status(500).json({ message: "Failed to change password" });
         }
 
+        logActivity(userId, "CHANGE_PASSWORD", "SUCCESS", "User changed password");
         res.json({ message: "Password changed successfully" });
       });
 

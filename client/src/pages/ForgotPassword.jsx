@@ -1,6 +1,12 @@
+// client/src/pages/ForgotPassword.jsx
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import API from "../services/api";
+import { 
+  FaEnvelope, 
+  FaKey, 
+} from "react-icons/fa";
+import { RiGovernmentFill } from "react-icons/ri";
 
 function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -16,7 +22,7 @@ function ForgotPassword() {
 
     try {
       const response = await API.post("/auth/forgot-password", { email });
-      setMessage(response.data.message);
+      setMessage(response.data.message || "Reset link sent to your email");
       setEmail("");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to send reset link");
@@ -28,152 +34,299 @@ function ForgotPassword() {
   const styles = {
     container: {
       minHeight: "100vh",
-      background: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)",
       display: "flex",
-      justifyContent: "center",
       alignItems: "center",
-      fontFamily: "'Segoe UI', Roboto, sans-serif",
-      padding: "16px"
+      justifyContent: "center",
+      position: "relative",
+      background: "#0a0a14",
+      overflow: "hidden",
+      fontFamily: "'Inter', system-ui, sans-serif",
+      padding: "20px",
     },
+
+    backgroundLayer: {
+      position: "absolute",
+      inset: 0,
+      background: `
+        radial-gradient(circle at 30% 25%, rgba(103, 232, 249, 0.12) 0%, transparent 55%),
+        radial-gradient(circle at 70% 75%, rgba(167, 139, 250, 0.10) 0%, transparent 55%)
+      `,
+      zIndex: 1,
+    },
+
+    holographicGrid: {
+      position: "absolute",
+      inset: 0,
+      zIndex: 2,
+      backgroundImage: `
+        linear-gradient(rgba(103,232,249,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(103,232,249,0.04) 1px, transparent 1px)
+      `,
+      backgroundSize: "40px 40px",
+      animation: "holoScan 15s linear infinite",
+      pointerEvents: "none",
+    },
+
     card: {
-      backgroundColor: "white",
+      position: "relative",
+      zIndex: 10,
+      background: "rgba(15, 15, 35, 0.92)",
+      backdropFilter: "blur(24px)",
+      border: "1px solid rgba(103, 232, 249, 0.3)",
       borderRadius: "24px",
-      padding: "32px",
-      maxWidth: "400px",
+      padding: "28px 24px",
       width: "100%",
-      boxShadow: "0 20px 40px rgba(0,0,0,0.15)"
+      maxWidth: "400px",
+      boxShadow: `
+        0 20px 40px -12px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(103, 232, 249, 0.15)
+      `,
     },
+
+    govBadge: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "8px",
+      background: "rgba(103, 232, 249, 0.12)",
+      color: "#67e8f9",
+      padding: "5px 14px",
+      borderRadius: "30px",
+      fontSize: "10px",
+      fontWeight: "600",
+      letterSpacing: "0.8px",
+      border: "1px solid rgba(103, 232, 249, 0.25)",
+      marginBottom: "20px",
+      width: "fit-content",
+    },
+
+    iconWrapper: {
+      width: "56px",
+      height: "56px",
+      background: "linear-gradient(135deg, #7c3aed, #22d3ee, #a855f7)",
+      borderRadius: "16px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      margin: "0 auto 20px",
+      position: "relative",
+      boxShadow: "0 0 35px rgba(103, 232, 249, 0.35)",
+    },
+
+    iconGlow: {
+      position: "absolute",
+      inset: "-10px",
+      background: "radial-gradient(circle, rgba(103,232,249,0.3) 0%, transparent 70%)",
+      borderRadius: "22px",
+      animation: "holoPulse 3s ease-in-out infinite",
+      zIndex: -1,
+    },
+
     title: {
-      fontSize: "24px",
+      fontSize: "22px",
       fontWeight: "700",
-      color: "#1a3c34",
-      marginBottom: "8px",
-      textAlign: "center"
-    },
-    subtitle: {
-      fontSize: "14px",
-      color: "#6b7280",
+      color: "#f0f9ff",
       textAlign: "center",
-      marginBottom: "24px"
+      marginBottom: "6px",
+      letterSpacing: "-0.5px",
     },
+
+    subtitle: {
+      fontSize: "12px",
+      color: "#a5b4fc",
+      textAlign: "center",
+      marginBottom: "24px",
+      lineHeight: "1.4",
+    },
+
+    errorAlert: {
+      background: "rgba(248, 113, 113, 0.12)",
+      border: "1px solid rgba(248, 113, 113, 0.3)",
+      color: "#fca5a5",
+      padding: "10px 14px",
+      borderRadius: "10px",
+      marginBottom: "16px",
+      fontSize: "12px",
+      textAlign: "center",
+    },
+
+    successAlert: {
+      background: "rgba(103, 232, 249, 0.12)",
+      border: "1px solid rgba(103, 232, 249, 0.3)",
+      color: "#67e8f9",
+      padding: "10px 14px",
+      borderRadius: "10px",
+      marginBottom: "16px",
+      fontSize: "12px",
+      textAlign: "center",
+    },
+
+    form: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "16px",
+    },
+
     inputGroup: {
-      marginBottom: "20px"
+      display: "flex",
+      flexDirection: "column",
+      gap: "6px",
     },
+
     label: {
-      display: "block",
-      fontSize: "14px",
-      fontWeight: "500",
-      color: "#374151",
-      marginBottom: "6px"
+      fontSize: "11px",
+      fontWeight: "600",
+      color: "#c4b5fd",
     },
+
+    inputWrapper: {
+      position: "relative",
+    },
+
     input: {
       width: "100%",
-      padding: "12px",
-      fontSize: "14px",
-      border: "2px solid #e2e8f0",
-      borderRadius: "8px",
+      padding: "10px 12px 10px 40px",
+      fontSize: "13px",
+      backgroundColor: "rgba(15, 15, 35, 0.85)",
+      border: "1.5px solid rgba(129, 140, 248, 0.35)",
+      borderRadius: "10px",
+      color: "#f0f9ff",
       outline: "none",
+      transition: "all 0.3s ease",
+      fontFamily: "inherit",
       boxSizing: "border-box",
-      transition: "border-color 0.3s"
     },
+
+    inputIcon: {
+      position: "absolute",
+      left: "14px",
+      top: "50%",
+      transform: "translateY(-50%)",
+      color: "#818cf8",
+      fontSize: "14px",
+    },
+
     button: {
-      width: "100%",
-      padding: "12px",
-      backgroundColor: "#1a5f7a",
-      color: "white",
+      background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
+      color: "#0a0a14",
+      padding: "10px",
+      fontSize: "13px",
+      fontWeight: "700",
       border: "none",
-      borderRadius: "8px",
-      fontSize: "16px",
-      fontWeight: "600",
+      borderRadius: "10px",
       cursor: "pointer",
-      transition: "background-color 0.3s"
-    },
-    buttonDisabled: {
+      marginTop: "4px",
       width: "100%",
-      padding: "12px",
-      backgroundColor: "#9ca3af",
-      color: "white",
-      border: "none",
-      borderRadius: "8px",
-      fontSize: "16px",
-      fontWeight: "600",
-      cursor: "not-allowed"
+      transition: "all 0.3s ease",
+      boxShadow: "0 4px 15px rgba(103, 232, 249, 0.3)",
     },
-    errorAlert: {
-      backgroundColor: "#fee2e2",
-      color: "#dc2626",
-      padding: "12px",
-      borderRadius: "8px",
-      marginBottom: "16px",
-      fontSize: "14px",
-      textAlign: "center"
+
+    buttonDisabled: {
+      background: "#475569",
+      color: "#94a3b8",
+      cursor: "not-allowed",
+      boxShadow: "none",
     },
-    successAlert: {
-      backgroundColor: "#dcfce7",
-      color: "#166534",
-      padding: "12px",
-      borderRadius: "8px",
-      marginBottom: "16px",
-      fontSize: "14px",
-      textAlign: "center"
-    },
-    backLink: {
-      textAlign: "center",
-      marginTop: "20px"
-    },
+
     link: {
-      color: "#1a5f7a",
+      color: "#67e8f9",
       textDecoration: "none",
-      fontSize: "14px",
-      cursor: "pointer"
+      fontSize: "11px",
+      fontWeight: "500",
+      textAlign: "center",
+      marginTop: "16px",
+      display: "block",
     }
   };
 
   return (
     <div style={styles.container}>
+      <div style={styles.backgroundLayer} />
+      <div style={styles.holographicGrid} />
+
       <div style={styles.card}>
+        <div style={styles.govBadge}>
+          <RiGovernmentFill size={11} />
+          GOVT OF INDIA • PASSWORD RECOVERY
+        </div>
+
+        <div style={styles.iconWrapper}>
+          <div style={styles.iconGlow} />
+          <FaKey size={26} color="#f0f9ff" />
+        </div>
+
         <h1 style={styles.title}>Forgot Password</h1>
-        <p style={styles.subtitle}>Enter your email to receive a reset link</p>
+        <p style={styles.subtitle}>
+          Enter your registered email to receive a reset link
+        </p>
 
         {error && <div style={styles.errorAlert}>{error}</div>}
         {message && <div style={styles.successAlert}>{message}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Email Address</label>
-            <input
-              type="email"
-              style={styles.input}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your registered email"
-              required
-              onFocus={(e) => e.target.style.borderColor = "#1a5f7a"}
-              onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
-            />
+            <label style={styles.label}>Official Email</label>
+            <div style={styles.inputWrapper}>
+              <FaEnvelope style={styles.inputIcon} />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="officer.name@gov.in"
+                style={styles.input}
+                required
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#67e8f9";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(103, 232, 249, 0.15)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "rgba(129, 140, 248, 0.35)";
+                  e.target.style.boxShadow = "none";
+                }}
+              />
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
             style={loading ? styles.buttonDisabled : styles.button}
-            onMouseEnter={e => {
-              if (!loading) e.target.style.backgroundColor = "#0e4a60";
+            onMouseEnter={(e) => {
+              if (!loading) {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 20px rgba(103, 232, 249, 0.4)";
+              }
             }}
-            onMouseLeave={e => {
-              if (!loading) e.target.style.backgroundColor = "#1a5f7a";
+            onMouseLeave={(e) => {
+              if (!loading) {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 4px 15px rgba(103, 232, 249, 0.3)";
+              }
             }}
           >
-            {loading ? "Sending..." : "Send Reset Link"}
+            {loading ? "Sending Reset Link..." : "Send Reset Link"}
           </button>
         </form>
 
-        <div style={styles.backLink}>
-          <Link to="/login" style={styles.link}>
-            Back to Login
-          </Link>
-        </div>
+        <Link to="/login" style={styles.link}>
+          ← Back to Login
+        </Link>
       </div>
+
+      <style jsx>{`
+        @keyframes holoScan {
+          0% { background-position: 0 0; }
+          100% { background-position: 80px 80px; }
+        }
+
+        @keyframes holoPulse {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.08); }
+        }
+
+        input:focus {
+          border-color: #67e8f9 !important;
+        }
+      `}</style>
     </div>
   );
 }

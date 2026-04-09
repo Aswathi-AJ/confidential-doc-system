@@ -10,15 +10,26 @@ const app = express();
 app.use(cors());
 app.use(express.json());   
 
+// ✅ FIXED: Changed from "/api/document" to "/api/documents"
+app.use("/api/documents", documentRoutes);  // ← Added 's' to match frontend
 app.use("/api/auth", authRoutes);
-app.use("/api/document", documentRoutes);
 app.use("/api/admin", userManagementRoutes);
+
 app.get("/", (req, res) => {
   res.send("Server is running...");
 });
 
-app.listen(5000, () => {
-  console.log("Server running on port 5000");
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log("Available endpoints:");
+  console.log("  POST   /api/auth/login");
+  console.log("  POST   /api/documents/upload");
+  console.log("  GET    /api/documents/list");
+  console.log("  GET    /api/documents/download/:id");
+  console.log("  DELETE /api/documents/:id");
+  console.log("  GET    /api/admin/users");
+  console.log("  POST   /api/admin/users");
 });
 
 const verifyToken = require("./middleware/authMiddleware");

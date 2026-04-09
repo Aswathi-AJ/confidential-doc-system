@@ -1,23 +1,34 @@
 // client/src/pages/DocumentsPage.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
+import PDFViewer from "../components/PDFViewer";
+import Toast from "../components/Toast";
+import ConfirmModal from "../components/ConfirmModal";
+import { 
+  FaEye, 
+  FaDownload, 
+  FaTrash, 
+  FaSearch,
+} from "react-icons/fa";
+import { RiGovernmentFill } from "react-icons/ri";
 
 function DocumentsPage() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedDoc, setSelectedDoc] = useState(null);
-  const [showModal, setShowModal] = useState(false);
+  const [showViewer, setShowViewer] = useState(false);
+  const [viewerDoc, setViewerDoc] = useState(null);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [user, setUser] = useState(null);
-  const [downloading, setDownloading] = useState(null); // Track which doc is downloading
+  const [downloading, setDownloading] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const navigate = useNavigate();
   const isMobile = windowWidth < 768;
 
-  // Get user from localStorage
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (userData) {
@@ -27,25 +38,21 @@ function DocumentsPage() {
     }
   }, [navigate]);
 
-  // Handle window resize
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Fetch documents
   useEffect(() => {
-    if (user) {
-      fetchDocuments();
-    }
+    if (user) fetchDocuments();
   }, [user]);
 
   const fetchDocuments = async () => {
     try {
       setLoading(true);
       const response = await API.get("/documents/list");
-      setDocuments(response.data);
+      setDocuments(response.data || []);
       setError("");
     } catch (err) {
       console.error("Error fetching documents:", err);
@@ -55,540 +62,529 @@ function DocumentsPage() {
     }
   };
 
-  // ✅ FIXED: Proper download with authentication
   const handleDownload = async (docId, filename) => {
+    if (user?.role !== "admin") {
+      setToast({ message: "Only administrators can download documents", type: "warning" });
+      return;
+    }
+
     try {
       setDownloading(docId);
-      
-      // Make request with authentication headers
       const response = await API.get(`/documents/download/${docId}`, {
-        responseType: "blob", // Important: tells axios to handle binary data
+        responseType: "blob",
       });
-      
-      // Create blob URL
-      const blob = new Blob([response.data], { type: "application/pdf" });
+
+      const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
-      
-      // Create download link
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
-      
-      // Clean up
       link.remove();
       window.URL.revokeObjectURL(url);
-      
+      setToast({ message: `"${filename}" downloaded successfully`, type: "success" });
     } catch (err) {
-      console.error("Download error:", err);
-      
-      // Handle specific error cases
-      if (err.response?.status === 403) {
-        alert("You don't have permission to download this document");
-      } else if (err.response?.status === 404) {
-        alert("Document not found");
-      } else {
-        alert("Failed to download document. Please try again.");
-      }
+      setToast({ message: "Failed to download document", type: "error" });
     } finally {
       setDownloading(null);
     }
   };
 
-  const handleDelete = async (docId) => {
-    if (!window.confirm("Are you sure you want to delete this document?")) {
-      return;
-    }
-    
-    try {
-      await API.delete(`/documents/${docId}`);
-      fetchDocuments(); // Refresh the list
-      alert("Document deleted successfully");
-    } catch (err) {
-      console.error("Delete error:", err);
-      alert(err.response?.data?.message || "Failed to delete document");
-    }
+  const handleDelete = (docId, docName) => {
+    setConfirmDelete({
+      id: docId,
+      name: docName,
+      onConfirm: async () => {
+        setConfirmDelete(null);
+        try {
+          await API.delete(`/documents/${docId}`);
+          fetchDocuments();
+          setToast({ message: `"${docName}" deleted successfully`, type: "success" });
+        } catch (err) {
+          setToast({ message: err.response?.data?.message || "Failed to delete document", type: "error" });
+        }
+      }
+    });
   };
 
-  const handleView = (doc) => {
-    setSelectedDoc(doc);
-    setShowModal(true);
+  const handleOpenViewer = useCallback((doc) => {
+    setViewerDoc(doc);
+    setShowViewer(true);
+  }, []);
+
+  const getUploaderDisplay = (doc) => {
+    const roleDisplay = doc.uploaded_by_role === "admin" ? "Admin" : 
+                        doc.uploaded_by_role === "officer" ? "Officer" : "Viewer";
+    return {
+      name: doc.uploaded_by_name || "Unknown",
+      role: roleDisplay,
+      full: `${doc.uploaded_by_name || "Unknown"} (${roleDisplay})`,
+    };
   };
 
-  // Filter documents based on search
   const filteredDocuments = documents.filter(doc =>
     doc.filename.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Sort by newest first
-  const sortedDocuments = [...filteredDocuments].sort((a, b) => {
-    return new Date(b.created_at) - new Date(a.created_at);
-  });
+  const sortedDocuments = [...filteredDocuments].sort((a, b) => 
+    new Date(b.created_at) - new Date(a.created_at)
+  );
 
-  const role = user?.role;
-  const isAdmin = role === "admin";
+  const isAdmin = user?.role === "admin";
 
-  // ✅ STYLES DEFINED HERE - BEFORE THEY ARE USED
   const styles = {
     container: {
       minHeight: "100vh",
-      background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-      fontFamily: "'Segoe UI', Roboto, sans-serif",
-      padding: isMobile ? "16px" : "24px"
+      background: "#0a0a14",
+      color: "#f0f9ff",
+      fontFamily: "'Inter', system-ui, sans-serif",
+      position: "relative",
     },
-    loadingContainer: {
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
-      alignItems: "center",
-      background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
-      fontFamily: "'Segoe UI', Roboto, sans-serif"
-    },
-    spinner: {
-      fontSize: "48px",
-      marginBottom: "16px",
-      animation: "spin 1s linear infinite"
-    },
-    header: {
-      backgroundColor: "#1a3c34",
-      color: "white",
-      padding: isMobile ? "16px" : "20px 32px",
-      borderRadius: "16px",
-      marginBottom: "24px",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      flexWrap: "wrap",
-      gap: "16px"
-    },
-    headerTitle: {
-      fontSize: isMobile ? "18px" : "24px",
-      fontWeight: "700"
-    },
-    headerSubtitle: {
-      fontSize: isMobile ? "12px" : "14px",
-      opacity: 0.8,
-      marginTop: "4px"
-    },
-    backBtn: {
-      backgroundColor: "rgba(255,255,255,0.2)",
-      border: "none",
-      padding: "8px 16px",
-      borderRadius: "8px",
-      color: "white",
-      cursor: "pointer",
-      fontSize: "14px",
-      transition: "background 0.3s"
-    },
-    uploadBtn: {
-      backgroundColor: "#22c55e",
-      border: "none",
-      padding: "8px 16px",
-      borderRadius: "8px",
-      color: "white",
-      cursor: "pointer",
-      fontSize: "14px",
-      marginLeft: "8px",
-      transition: "background 0.3s"
-    },
-    card: {
-      backgroundColor: "white",
-      borderRadius: "24px",
-      padding: isMobile ? "20px" : "32px",
-      boxShadow: "0 20px 40px rgba(0,0,0,0.1)"
-    },
-    title: {
-      fontSize: isMobile ? "24px" : "28px",
-      fontWeight: "700",
-      color: "#1a3c34",
-      marginBottom: "8px"
-    },
-    stats: {
-      display: "flex",
-      gap: "16px",
-      marginBottom: "24px",
-      flexWrap: "wrap"
-    },
-    statCard: {
-      backgroundColor: "#f8fafc",
-      padding: "16px",
-      borderRadius: "12px",
-      flex: "1",
-      minWidth: "120px",
-      textAlign: "center",
-      cursor: "pointer",
-      transition: "transform 0.3s"
-    },
-    statNumber: {
-      fontSize: "28px",
-      fontWeight: "700",
-      color: "#1a3c34"
-    },
-    statLabel: {
-      fontSize: "12px",
-      color: "#64748b",
-      marginTop: "4px"
-    },
-    searchBox: {
-      width: "100%",
-      padding: "12px 16px",
-      fontSize: "14px",
-      border: "1px solid #e2e8f0",
-      borderRadius: "12px",
-      marginBottom: "24px",
-      outline: "none",
-      transition: "border-color 0.3s"
-    },
-    tableWrapper: {
-      overflowX: "auto",
-      borderRadius: "12px",
-      border: "1px solid #e2e8f0"
-    },
-    table: {
-      width: "100%",
-      borderCollapse: "collapse",
-      backgroundColor: "white",
-      minWidth: "600px"
-    },
-    th: {
-      textAlign: "left",
-      padding: "12px 16px",
-      backgroundColor: "#f8fafc",
-      borderBottom: "2px solid #e2e8f0",
-      fontWeight: "600",
-      color: "#1e293b",
-      fontSize: "14px"
-    },
-    td: {
-      padding: "12px 16px",
-      borderBottom: "1px solid #e2e8f0",
-      color: "#475569",
-      fontSize: "14px"
-    },
-    actionBtn: {
-      padding: "6px 12px",
-      margin: "0 4px",
-      border: "none",
-      borderRadius: "6px",
-      cursor: "pointer",
-      fontSize: "12px",
-      fontWeight: "500",
-      transition: "all 0.2s"
-    },
-    viewBtn: {
-      backgroundColor: "#3b82f6",
-      color: "white"
-    },
-    downloadBtn: {
-      backgroundColor: "#10b981",
-      color: "white"
-    },
-    downloadBtnDisabled: {
-      backgroundColor: "#9ca3af",
-      color: "white",
-      cursor: "not-allowed"
-    },
-    deleteBtn: {
-      backgroundColor: "#ef4444",
-      color: "white"
-    },
-    emptyState: {
-      textAlign: "center",
-      padding: "48px",
-      color: "#64748b"
-    },
-    modal: {
+
+    backgroundLayer: {
       position: "fixed",
       top: 0,
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.5)",
+      background: `
+        radial-gradient(circle at 30% 25%, rgba(103, 232, 249, 0.12) 0%, transparent 55%),
+        radial-gradient(circle at 70% 75%, rgba(167, 139, 250, 0.10) 0%, transparent 55%)
+      `,
+      zIndex: 0,
+    },
+
+    holographicGrid: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundImage: `
+        linear-gradient(rgba(103,232,249,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(103,232,249,0.04) 1px, transparent 1px)
+      `,
+      backgroundSize: "40px 40px",
+      animation: "holoScan 15s linear infinite",
+      pointerEvents: "none",
+      zIndex: 0,
+    },
+
+    header: {
+      position: "sticky",
+      top: 0,
+      zIndex: 100,
+      background: "rgba(15, 15, 35, 0.96)",
+      backdropFilter: "blur(16px)",
+      borderBottom: "1px solid rgba(167, 139, 250, 0.25)",
+      padding: isMobile ? "12px 16px" : "14px 32px",
+    },
+
+    headerContent: {
+      maxWidth: "1280px",
+      margin: "0 auto",
       display: "flex",
-      justifyContent: "center",
+      justifyContent: "space-between",
       alignItems: "center",
-      zIndex: 1000,
-      padding: "16px"
+      flexWrap: "wrap",
+      gap: "12px",
     },
-    modalContent: {
-      backgroundColor: "white",
-      borderRadius: "16px",
-      padding: "24px",
-      maxWidth: "500px",
-      width: "100%",
-      maxHeight: "90%",
-      overflow: "auto"
+
+    logoSection: {
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
     },
-    modalTitle: {
-      fontSize: "20px",
-      fontWeight: "600",
-      color: "#1a3c34",
-      marginBottom: "16px"
+
+    logo: {
+      fontSize: isMobile ? "16px" : "20px",
+      fontWeight: "800",
+      background: "linear-gradient(90deg, #67e8f9, #c4b5fd)",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
     },
-    modalInfo: {
-      marginBottom: "12px",
-      padding: "8px 0",
-      borderBottom: "1px solid #e2e8f0"
+
+    main: {
+      position: "relative",
+      zIndex: 1,
+      maxWidth: "1280px",
+      margin: "0 auto",
+      padding: isMobile ? "20px 16px" : "30px 32px",
     },
-    modalLabel: {
-      fontWeight: "600",
-      color: "#1e293b",
-      marginBottom: "4px"
+
+    card: {
+      background: "rgba(15, 15, 35, 0.90)",
+      backdropFilter: "blur(20px)",
+      border: "1px solid rgba(167, 139, 250, 0.3)",
+      borderRadius: "20px",
+      padding: isMobile ? "20px" : "24px",
+      boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
     },
-    modalValue: {
-      color: "#475569"
-    },
-    errorAlert: {
-      backgroundColor: "#fee2e2",
-      color: "#dc2626",
-      padding: "12px",
-      borderRadius: "10px",
+
+    title: {
+      fontSize: isMobile ? "22px" : "24px",
+      fontWeight: "700",
+      color: "#f0f9ff",
       marginBottom: "20px",
-      fontSize: "14px",
-      borderLeft: "4px solid #dc2626"
     },
-    closeBtn: {
-      backgroundColor: "#e2e8f0",
-      color: "#475569",
-      padding: "8px 16px",
+
+    stats: {
+      display: "flex",
+      gap: "12px",
+      marginBottom: "24px",
+      flexWrap: "wrap",
+    },
+
+    statCard: {
+      background: "rgba(30, 30, 60, 0.6)",
+      border: "1px solid rgba(167, 139, 250, 0.2)",
+      borderRadius: "12px",
+      padding: "14px 16px",
+      flex: "1",
+      minWidth: "120px",
+      textAlign: "center",
+    },
+
+    statNumber: {
+      fontSize: "24px",
+      fontWeight: "700",
+      color: "#67e8f9",
+    },
+
+    statLabel: {
+      fontSize: "10px",
+      color: "#a5b4fc",
+      marginTop: "4px",
+    },
+
+    searchWrapper: {
+      position: "relative",
+      marginBottom: "20px",
+    },
+
+    searchIcon: {
+      position: "absolute",
+      left: "14px",
+      top: "50%",
+      transform: "translateY(-50%)",
+      color: "#818cf8",
+      fontSize: "14px",
+    },
+
+    searchBox: {
+      width: "100%",
+      padding: "10px 14px 10px 40px",
+      background: "rgba(15, 15, 35, 0.85)",
+      border: "1.5px solid rgba(129, 140, 248, 0.35)",
+      borderRadius: "10px",
+      color: "#f0f9ff",
+      fontSize: "12px",
+      outline: "none",
+    },
+
+    tableWrapper: {
+      overflowX: "auto",
+      borderRadius: "12px",
+      border: "1px solid rgba(167, 139, 250, 0.15)",
+    },
+
+    table: {
+      width: "100%",
+      borderCollapse: "collapse",
+      background: "rgba(15, 15, 35, 0.6)",
+      minWidth: "800px",
+    },
+
+    th: {
+      textAlign: "left",
+      padding: "10px 12px",
+      background: "rgba(30, 30, 60, 0.8)",
+      color: "#c4b5fd",
+      fontWeight: "600",
+      fontSize: "11px",
+      borderBottom: "1px solid rgba(167, 139, 250, 0.15)",
+    },
+
+    td: {
+      padding: "10px 12px",
+      borderBottom: "1px solid rgba(167, 139, 250, 0.1)",
+      color: "#e0f2fe",
+      fontSize: "12px",
+    },
+
+    actionBtn: {
+      padding: "5px 12px",
+      margin: "0 4px",
       border: "none",
       borderRadius: "8px",
       cursor: "pointer",
-      marginTop: "16px",
-      marginRight: "8px"
-    },
-    badge: {
-      display: "inline-block",
-      padding: "4px 8px",
-      borderRadius: "6px",
-      fontSize: "12px",
+      fontSize: "11px",
       fontWeight: "500",
-      backgroundColor: "#dcfce7",
-      color: "#166534"
-    }
+      transition: "all 0.2s ease",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "5px",
+    },
+
+    viewBtn: {
+      background: "rgba(103, 232, 249, 0.12)",
+      color: "#67e8f9",
+      border: "1px solid rgba(103, 232, 249, 0.3)",
+    },
+
+    downloadBtn: {
+      background: "rgba(167, 139, 250, 0.12)",
+      color: "#c4b5fd",
+      border: "1px solid rgba(167, 139, 250, 0.3)",
+    },
+
+    deleteBtn: {
+      background: "rgba(248, 113, 113, 0.12)",
+      color: "#fca5a5",
+      border: "1px solid rgba(248, 113, 113, 0.3)",
+    },
+
+    badge: {
+      padding: "3px 10px",
+      background: "rgba(103,232,249,0.12)",
+      color: "#67e8f9",
+      borderRadius: "16px",
+      fontSize: "10px",
+      fontWeight: "500",
+    },
+
+    emptyState: {
+      textAlign: "center",
+      padding: "60px 20px",
+      color: "#94a3b8",
+      fontSize: "12px",
+    },
+
+    errorAlert: {
+      background: "rgba(248, 113, 113, 0.12)",
+      border: "1px solid rgba(248, 113, 113, 0.3)",
+      color: "#fca5a5",
+      padding: "10px 14px",
+      borderRadius: "10px",
+      marginBottom: "20px",
+      fontSize: "12px",
+    },
   };
 
-  // Show loading state while user data loads (using styles defined above)
   if (!user) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.spinner}>⏳</div>
-        <p>Loading...</p>
+      <div style={{ minHeight: "100vh", background: "#0a0a14", display: "flex", alignItems: "center", justifyContent: "center", color: "#67e8f9" }}>
+        Loading...
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div>
-          <div style={styles.headerTitle}>📋 Document Management System</div>
-          <div style={styles.headerSubtitle}>
-            Secure AES-256 Encrypted Document Storage
-          </div>
-        </div>
-        <div>
-          <button
-            onClick={() => navigate("/dashboard")}
-            style={styles.backBtn}
-            onMouseEnter={e => e.target.style.backgroundColor = "rgba(255,255,255,0.3)"}
-            onMouseLeave={e => e.target.style.backgroundColor = "rgba(255,255,255,0.2)"}
-          >
-            ← Dashboard
-          </button>
-          <button
-            onClick={() => navigate("/upload")}
-            style={styles.uploadBtn}
-            onMouseEnter={e => e.target.style.backgroundColor = "#16a34a"}
-            onMouseLeave={e => e.target.style.backgroundColor = "#22c55e"}
-          >
-            + Upload New
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div style={styles.card}>
-        <h1 style={styles.title}>📄 My Documents</h1>
-
-        {/* Statistics */}
-        <div style={styles.stats}>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{documents.length}</div>
-            <div style={styles.statLabel}>Total Documents</div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{documents.filter(d => d.uploaded_by === user?.id).length}</div>
-            <div style={styles.statLabel}>Your Documents</div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statNumber}>{isAdmin ? "Admin" : role === "officer" ? "Officer" : "Viewer"}</div>
-            <div style={styles.statLabel}>Your Role</div>
-          </div>
-        </div>
-
-        {/* Search */}
-        <input
-          type="text"
-          placeholder="🔍 Search by filename..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={styles.searchBox}
-          onFocus={(e) => e.target.style.borderColor = "#1a5f7a"}
-          onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
+    <>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {confirmDelete && (
+        <ConfirmModal
+          title="Delete Document"
+          message={`Are you sure you want to delete "${confirmDelete.name}"? This action cannot be undone.`}
+          onConfirm={confirmDelete.onConfirm}
+          onCancel={() => setConfirmDelete(null)}
         />
+      )}
 
-        {/* Error Message */}
-        {error && <div style={styles.errorAlert}>{error}</div>}
+      <div style={styles.container}>
+        <div style={styles.backgroundLayer} />
+        <div style={styles.holographicGrid} />
 
-        {/* Documents Table */}
-        {loading ? (
-          <div style={styles.emptyState}>⏳ Loading documents...</div>
-        ) : sortedDocuments.length === 0 ? (
-          <div style={styles.emptyState}>
-            📭 No documents found
-            {searchTerm && " matching your search"}
-            <div style={{ marginTop: "16px" }}>
-              <button
-                onClick={() => navigate("/upload")}
-                style={styles.uploadBtn}
-              >
-                Upload your first document
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div style={styles.tableWrapper}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>#</th>
-                  <th style={styles.th}>📄 Filename</th>
-                  {isAdmin && <th style={styles.th}>👤 Uploaded By</th>}
-                  <th style={styles.th}>📅 Upload Date</th>
-                  <th style={styles.th}>🔒 Status</th>
-                  <th style={styles.th}>⚡ Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedDocuments.map((doc, index) => (
-                  <tr key={doc.id}>
-                    <td style={styles.td}>{index + 1}</td>
-                    <td style={styles.td}>
-                      <strong>{doc.filename}</strong>
-                    </td>
-                    {isAdmin && <td style={styles.td}>{doc.uploaded_by || "Unknown"}</td>}
-                    <td style={styles.td}>
-                      {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : "N/A"}
-                    </td>
-                    <td style={styles.td}>
-                      <span style={styles.badge}>🔐 Encrypted</span>
-                    </td>
-                    <td style={styles.td}>
-                      <button
-                        onClick={() => handleView(doc)}
-                        style={{ ...styles.actionBtn, ...styles.viewBtn }}
-                        onMouseEnter={e => e.target.style.opacity = "0.8"}
-                        onMouseLeave={e => e.target.style.opacity = "1"}
-                      >
-                        👁️ View
-                      </button>
-                      <button
-                        onClick={() => handleDownload(doc.id, doc.filename)}
-                        disabled={downloading === doc.id}
-                        style={{
-                          ...styles.actionBtn,
-                          ...(downloading === doc.id ? styles.downloadBtnDisabled : styles.downloadBtn)
-                        }}
-                        onMouseEnter={e => {
-                          if (downloading !== doc.id) {
-                            e.target.style.opacity = "0.8";
-                          }
-                        }}
-                        onMouseLeave={e => {
-                          if (downloading !== doc.id) {
-                            e.target.style.opacity = "1";
-                          }
-                        }}
-                      >
-                        {downloading === doc.id ? "⏳ Downloading..." : "📥 Download"}
-                      </button>
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleDelete(doc.id)}
-                          style={{ ...styles.actionBtn, ...styles.deleteBtn }}
-                          onMouseEnter={e => e.target.style.opacity = "0.8"}
-                          onMouseLeave={e => e.target.style.opacity = "1"}
-                        >
-                          🗑️ Delete
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {showViewer && viewerDoc && (
+          <PDFViewer 
+            docId={viewerDoc.id}
+            filename={viewerDoc.filename}
+            onClose={() => setShowViewer(false)}
+          />
         )}
-      </div>
 
-      {/* View Modal */}
-      {showModal && selectedDoc && (
-        <div style={styles.modal} onClick={() => setShowModal(false)}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>📄 Document Details</h3>
-            <div style={styles.modalInfo}>
-              <div style={styles.modalLabel}>Filename:</div>
-              <div style={styles.modalValue}>{selectedDoc.filename}</div>
-            </div>
-            <div style={styles.modalInfo}>
-              <div style={styles.modalLabel}>Uploaded By:</div>
-              <div style={styles.modalValue}>{selectedDoc.uploaded_by || "Unknown"}</div>
-            </div>
-            <div style={styles.modalInfo}>
-              <div style={styles.modalLabel}>Upload Date:</div>
-              <div style={styles.modalValue}>
-                {selectedDoc.created_at ? new Date(selectedDoc.created_at).toLocaleString() : "N/A"}
+        <header style={styles.header}>
+          <div style={styles.headerContent}>
+            <div style={styles.logoSection}>
+              <RiGovernmentFill size={18} color="#67e8f9" />
+              <div>
+                <div style={styles.logo}>Confidential Document System</div>
+                <div style={{ fontSize: "9px", color: "#a5b4fc" }}>Document Management</div>
               </div>
             </div>
-            <div style={styles.modalInfo}>
-              <div style={styles.modalLabel}>Document ID:</div>
-              <div style={styles.modalValue}>#{selectedDoc.id}</div>
-            </div>
-            <div style={styles.modalInfo}>
-              <div style={styles.modalLabel}>Security Status:</div>
-              <div style={styles.modalValue}>🔐 AES-256-GCM Encrypted</div>
-            </div>
-            <div style={styles.modalInfo}>
-              <div style={styles.modalLabel}>Tamper Protection:</div>
-              <div style={styles.modalValue}>✅ Active with backup recovery</div>
-            </div>
-            <div>
-              <button
-                onClick={() => handleDownload(selectedDoc.id, selectedDoc.filename)}
-                disabled={downloading === selectedDoc.id}
+
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button 
+                onClick={() => navigate("/dashboard")}
                 style={{
-                  ...styles.actionBtn,
-                  ...(downloading === selectedDoc.id ? styles.downloadBtnDisabled : styles.downloadBtn),
-                  padding: "8px 16px"
+                  background: "rgba(167, 139, 250, 0.12)",
+                  color: "#c4b5fd",
+                  border: "1px solid rgba(167, 139, 250, 0.3)",
+                  padding: "6px 14px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontSize: "11px"
                 }}
               >
-                {downloading === selectedDoc.id ? "⏳ Downloading..." : "📥 Download Document"}
+                Dashboard
               </button>
-              <button
-                onClick={() => setShowModal(false)}
-                style={styles.closeBtn}
-              >
-                Close
-              </button>
+
+              {(user.role === "admin" || user.role === "officer") && (
+                <button 
+                  onClick={() => navigate("/upload")}
+                  style={{
+                    background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
+                    color: "#0a0a14",
+                    padding: "6px 14px",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "11px"
+                  }}
+                >
+                  Upload Document
+                </button>
+              )}
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        </header>
+
+        <main style={styles.main}>
+          <div style={styles.card}>
+            <h1 style={styles.title}>Documents</h1>
+
+            <div style={styles.stats}>
+              <div style={styles.statCard}>
+                <div style={styles.statNumber}>{documents.length}</div>
+                <div style={styles.statLabel}>Total Documents</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={{ ...styles.statNumber, color: "#67e8f9" }}>
+                  {user.role === "admin" ? "Admin" : user.role === "officer" ? "Officer" : "Viewer"}
+                </div>
+                <div style={styles.statLabel}>Your Role</div>
+              </div>
+            </div>
+
+            <div style={styles.searchWrapper}>
+              <FaSearch style={styles.searchIcon} />
+              <input
+                type="text"
+                placeholder="Search by filename..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={styles.searchBox}
+              />
+            </div>
+
+            {error && <div style={styles.errorAlert}>{error}</div>}
+
+            {loading ? (
+              <div style={styles.emptyState}>Loading documents...</div>
+            ) : sortedDocuments.length === 0 ? (
+              <div style={styles.emptyState}>
+                No documents found
+                {(user.role === "admin" || user.role === "officer") && (
+                  <button 
+                    onClick={() => navigate("/upload")} 
+                    style={{
+                      marginTop: "16px",
+                      background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
+                      color: "#0a0a14",
+                      padding: "8px 20px",
+                      border: "none",
+                      borderRadius: "8px",
+                      fontWeight: "600",
+                      fontSize: "11px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Upload your first document
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div style={styles.tableWrapper}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>#</th>
+                      <th style={styles.th}>Filename</th>
+                      <th style={styles.th}>Uploaded By</th>
+                      <th style={styles.th}>Upload Date</th>
+                      <th style={styles.th}>Status</th>
+                      <th style={styles.th}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedDocuments.map((doc, index) => {
+                      const uploader = getUploaderDisplay(doc);
+                      return (
+                        <tr key={doc.id}>
+                          <td style={styles.td}>{index + 1}</td>
+                          <td style={styles.td}>
+                            <strong>{doc.filename}</strong>
+                          </td>
+                          <td style={styles.td}>
+                            {uploader.full}
+                          </td>
+                          <td style={styles.td}>
+                            {doc.created_at ? new Date(doc.created_at).toLocaleDateString('en-IN') : "N/A"}
+                          </td>
+                          <td style={styles.td}>
+                            <span style={styles.badge}>Encrypted</span>
+                          </td>
+                          <td style={styles.td}>
+                            <button
+                              onClick={() => handleOpenViewer(doc)}
+                              style={{ ...styles.actionBtn, ...styles.viewBtn }}
+                            >
+                              <FaEye size={10} /> View
+                            </button>
+
+                            {isAdmin && (
+                              <>
+                                <button
+                                  onClick={() => handleDownload(doc.id, doc.filename)}
+                                  disabled={downloading === doc.id}
+                                  style={{
+                                    ...styles.actionBtn,
+                                    ...(downloading === doc.id ? { background: "#475569", color: "#94a3b8", cursor: "not-allowed" } : styles.downloadBtn)
+                                  }}
+                                >
+                                  <FaDownload size={10} /> 
+                                  {downloading === doc.id ? "Downloading..." : "Download"}
+                                </button>
+
+                                <button
+                                  onClick={() => handleDelete(doc.id, doc.filename)}
+                                  style={{ ...styles.actionBtn, ...styles.deleteBtn }}
+                                >
+                                  <FaTrash size={10} /> Delete
+                                </button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </main>
+
+        <style jsx>{`
+          @keyframes holoScan {
+            0% { background-position: 0 0; }
+            100% { background-position: 80px 80px; }
+          }
+        `}</style>
+      </div>
+    </>
   );
 }
 

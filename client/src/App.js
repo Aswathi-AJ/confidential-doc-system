@@ -7,6 +7,7 @@ import LogsPage from "./pages/LogsPage";
 import AdminPanel from "./pages/AdminPanel";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import SetupAccount from "./pages/SetupAccount";
 
 function App() {
   return (
@@ -20,7 +21,8 @@ function App() {
         <Route path="/logs" element={<LogsPage />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />   
+        <Route path="/reset-password" element={<ResetPassword />} /> 
+        <Route path="/setup-account" element={<SetupAccount />} />  
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
