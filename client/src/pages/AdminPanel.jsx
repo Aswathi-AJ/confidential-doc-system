@@ -404,15 +404,120 @@ function AdminPanel() {
       alignItems: "center",
       justifyContent: "center",
       zIndex: 2000,
+      padding: isMobile ? "16px" : "20px",
     },
 
     modal: {
       background: "rgba(15, 15, 35, 0.98)",
       border: "1px solid rgba(167, 139, 250, 0.4)",
       borderRadius: "16px",
-      padding: "24px",
+      padding: isMobile ? "20px" : "24px",
       width: "90%",
       maxWidth: "440px",
+      maxHeight: isMobile ? "90vh" : "auto",
+      overflowY: "auto",
+      boxSizing: "border-box",
+    },
+
+    modalHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "20px",
+      flexWrap: "wrap",
+      gap: "10px",
+    },
+
+    modalTitle: {
+      color: "#f0f9ff",
+      fontSize: isMobile ? "16px" : "18px",
+      margin: 0,
+      fontWeight: "600",
+    },
+
+    closeButton: {
+      background: "none",
+      border: "none",
+      color: "#9ca3af",
+      cursor: "pointer",
+      padding: "4px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      transition: "color 0.2s ease",
+    },
+
+    formGroup: {
+      marginBottom: "14px",
+      width: "100%",
+    },
+
+    formLabel: {
+      color: "#c4b5fd",
+      display: "block",
+      marginBottom: "5px",
+      fontSize: "11px",
+      fontWeight: "500",
+    },
+
+    formInput: {
+      width: "100%",
+      padding: "9px 12px",
+      background: "rgba(15,15,35,0.85)",
+      border: "1.5px solid rgba(129,140,248,0.35)",
+      borderRadius: "8px",
+      color: "#f0f9ff",
+      fontSize: "12px",
+      outline: "none",
+      boxSizing: "border-box",
+      transition: "border-color 0.2s ease",
+    },
+
+    selectInput: {
+      width: "100%",
+      padding: "9px 12px",
+      background: "rgba(15,15,35,0.85)",
+      border: "1.5px solid rgba(129,140,248,0.35)",
+      borderRadius: "8px",
+      color: "#f0f9ff",
+      fontSize: "12px",
+      outline: "none",
+      boxSizing: "border-box",
+      cursor: "pointer",
+    },
+
+    modalActions: {
+      display: "flex",
+      gap: "10px",
+      justifyContent: "flex-end",
+      marginTop: "24px",
+      flexDirection: isMobile ? "column" : "row",
+    },
+
+    cancelButton: {
+      padding: isMobile ? "10px 20px" : "8px 20px",
+      background: "rgba(148,163,184,0.2)",
+      color: "#e0f2fe",
+      border: "none",
+      borderRadius: "8px",
+      cursor: "pointer",
+      fontSize: "11px",
+      fontWeight: "500",
+      width: isMobile ? "100%" : "auto",
+      transition: "background 0.2s ease",
+    },
+
+    submitButton: {
+      padding: isMobile ? "10px 24px" : "8px 24px",
+      background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
+      color: "#0a0a14",
+      border: "none",
+      borderRadius: "8px",
+      fontWeight: "600",
+      cursor: "pointer",
+      fontSize: "11px",
+      width: isMobile ? "100%" : "auto",
+      transition: "opacity 0.2s ease",
     },
 
     guidelinesBox: {
@@ -450,14 +555,14 @@ function AdminPanel() {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               <button 
                 onClick={() => navigate("/dashboard")}
                 style={{
                   background: "rgba(167, 139, 250, 0.12)",
                   color: "#c4b5fd",
                   border: "1px solid rgba(167, 139, 250, 0.3)",
-                  padding: "6px 14px",
+                  padding: isMobile ? "6px 12px" : "6px 14px",
                   borderRadius: "8px",
                   cursor: "pointer",
                   fontSize: "11px"
@@ -471,7 +576,7 @@ function AdminPanel() {
                 style={{
                   background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
                   color: "#0a0a14",
-                  padding: "6px 16px",
+                  padding: isMobile ? "6px 12px" : "6px 16px",
                   border: "none",
                   borderRadius: "8px",
                   cursor: "pointer",
@@ -592,92 +697,61 @@ function AdminPanel() {
         {showCreateModal && (
           <div style={styles.modalOverlay} onClick={() => setShowCreateModal(false)}>
             <div style={styles.modal} onClick={e => e.stopPropagation()}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <h3 style={{ color: "#f0f9ff", fontSize: "18px", margin: 0 }}>Create New User</h3>
-                <button onClick={() => setShowCreateModal(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer" }}>
-                  <FaTimes size={16} />
+              <div style={styles.modalHeader}>
+                <h3 style={styles.modalTitle}>Create New User</h3>
+                <button 
+                  onClick={() => setShowCreateModal(false)} 
+                  style={styles.closeButton}
+                  onMouseEnter={(e) => e.currentTarget.style.color = "#f0f9ff"}
+                  onMouseLeave={(e) => e.currentTarget.style.color = "#9ca3af"}
+                >
+                  <FaTimes size={isMobile ? 14 : 16} />
                 </button>
               </div>
               
               <form onSubmit={handleCreateUser}>
-                <div style={{ marginBottom: "14px" }}>
-                  <label style={{ color: "#c4b5fd", display: "block", marginBottom: "5px", fontSize: "11px" }}>Full Name</label>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Full Name</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                     placeholder="Enter full name"
-                    style={{
-                      width: "100%",
-                      padding: "9px 12px",
-                      background: "rgba(15,15,35,0.85)",
-                      border: "1.5px solid rgba(129,140,248,0.35)",
-                      borderRadius: "8px",
-                      color: "#f0f9ff",
-                      fontSize: "12px",
-                      outline: "none"
-                    }}
+                    style={styles.formInput}
                     required
                   />
                 </div>
 
-                <div style={{ marginBottom: "14px" }}>
-                  <label style={{ color: "#c4b5fd", display: "block", marginBottom: "5px", fontSize: "11px" }}>Email Address</label>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Email Address</label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     placeholder="user@gov.in"
-                    style={{
-                      width: "100%",
-                      padding: "9px 12px",
-                      background: "rgba(15,15,35,0.85)",
-                      border: "1.5px solid rgba(129,140,248,0.35)",
-                      borderRadius: "8px",
-                      color: "#f0f9ff",
-                      fontSize: "12px",
-                      outline: "none"
-                    }}
+                    style={styles.formInput}
                     required
                   />
                 </div>
 
-                <div style={{ marginBottom: "14px" }}>
-                  <label style={{ color: "#c4b5fd", display: "block", marginBottom: "5px", fontSize: "11px" }}>Password</label>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Password</label>
                   <input
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({...formData, password: e.target.value})}
                     placeholder="Minimum 6 characters"
-                    style={{
-                      width: "100%",
-                      padding: "9px 12px",
-                      background: "rgba(15,15,35,0.85)",
-                      border: "1.5px solid rgba(129,140,248,0.35)",
-                      borderRadius: "8px",
-                      color: "#f0f9ff",
-                      fontSize: "12px",
-                      outline: "none"
-                    }}
+                    style={styles.formInput}
                     required
                   />
                 </div>
 
-                <div style={{ marginBottom: "20px" }}>
-                  <label style={{ color: "#c4b5fd", display: "block", marginBottom: "5px", fontSize: "11px" }}>Role</label>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Role</label>
                   <select
                     value={formData.role}
                     onChange={(e) => setFormData({...formData, role: e.target.value})}
-                    style={{
-                      width: "100%",
-                      padding: "9px 12px",
-                      background: "rgba(15,15,35,0.85)",
-                      border: "1.5px solid rgba(129,140,248,0.35)",
-                      borderRadius: "8px",
-                      color: "#f0f9ff",
-                      fontSize: "12px",
-                      outline: "none"
-                    }}
+                    style={styles.selectInput}
                   >
                     <option value="viewer">Viewer</option>
                     <option value="officer">Officer</option>
@@ -685,34 +759,21 @@ function AdminPanel() {
                   </select>
                 </div>
 
-                <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <div style={styles.modalActions}>
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    style={{
-                      padding: "8px 20px",
-                      background: "rgba(148,163,184,0.2)",
-                      color: "#e0f2fe",
-                      border: "none",
-                      borderRadius: "8px",
-                      cursor: "pointer",
-                      fontSize: "11px"
-                    }}
+                    style={styles.cancelButton}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(148,163,184,0.3)"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "rgba(148,163,184,0.2)"}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    style={{
-                      padding: "8px 24px",
-                      background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
-                      color: "#0a0a14",
-                      border: "none",
-                      borderRadius: "8px",
-                      fontWeight: "600",
-                      cursor: "pointer",
-                      fontSize: "11px"
-                    }}
+                    style={styles.submitButton}
+                    onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}
+                    onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
                   >
                     Create User
                   </button>
@@ -726,6 +787,17 @@ function AdminPanel() {
           @keyframes holoScan {
             0% { background-position: 0 0; }
             100% { background-position: 80px 80px; }
+          }
+          
+          /* Mobile-specific adjustments */
+          @media (max-width: 768px) {
+            input, select, button {
+              font-size: 14px !important;
+            }
+            
+            input:focus, select:focus, textarea:focus {
+              font-size: 14px !important;
+            }
           }
         `}</style>
       </div>

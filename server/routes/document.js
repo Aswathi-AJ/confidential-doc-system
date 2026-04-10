@@ -20,11 +20,11 @@ const storage = multer.diskStorage({
   }
 });
 
-// Updated multer config - Increased file size limit to 50MB for government documents
+// Multer config - 50MB limit
 const upload = multer({
   storage,
   limits: { 
-    fileSize: 50 * 1024 * 1024  // 50MB limit (gov documents can be large)
+    fileSize: 50 * 1024 * 1024
   }
 });
 
@@ -45,45 +45,40 @@ router.post(
   checkRole(["admin", "officer"]),
   upload.single("file"),
   (req, res) => {
-
-    // No file
     if (!req.file) {
       logActivity(req.user.id, "UPLOAD_DOCUMENT", "FAILED");
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    // Updated allowed file types for government documents
-const allowedTypes = [
-  "application/pdf",           // PDF documents - view inline
-  "image/jpeg",                // JPEG images - view inline
-  "image/png",                 // PNG images - view inline
-  "text/plain"                 // Text files - view inline
-];
+    const allowedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "text/plain"
+    ];
 
-    // Check file type
     if (!allowedTypes.includes(req.file.mimetype)) {
-      // Delete uploaded wrong file
       fs.unlinkSync(req.file.path);
       logActivity(req.user.id, "UPLOAD_DOCUMENT", "FAILED");
       return res.status(400).json({
-        message: "File type not allowed. Allowed types: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, JPEG, PNG, ZIP, RAR"
+        message: "File type not allowed. Allowed: PDF, JPG, PNG, TXT"
       });
     }
 
     const filePath = path.join(__dirname, "../uploads", req.file.filename);
     const fileData = fs.readFileSync(filePath);
-    
-    // Get file size for logging
     const fileSizeMB = (req.file.size / (1024 * 1024)).toFixed(2);
-    console.log(`Uploading file: ${req.file.originalname}, Size: ${fileSizeMB}MB, Type: ${req.file.mimetype}`);
+    
+    console.log(`Uploading: ${req.file.originalname}, Size: ${fileSizeMB}MB, Type: ${req.file.mimetype}`);
     
     const encrypted = encryptData(fileData);
-    const backupEncrypted = encryptData(fileData); // backup 
+    const backupEncrypted = encryptData(fileData);
 
     const sql = `
-    INSERT INTO documents 
-    (filename, encrypted_data, backup_data, encrypted_dek, iv, auth_tag, backup_key, backup_iv, backup_auth_tag, uploaded_by, file_size, mime_type)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO documents 
+      (filename, encrypted_data, backup_data, encrypted_dek, iv, auth_tag, 
+       backup_key, backup_iv, backup_auth_tag, uploaded_by, file_size, mime_type)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     db.query(
@@ -126,7 +121,6 @@ const allowedTypes = [
 );
 
 // ================= LIST =================
-// ================= LIST =================
 router.get(
   "/list",
   verifyToken,
@@ -139,7 +133,6 @@ router.get(
     let values = [];
 
     if (userRole === "admin" && filterUserId) {
-      // Admin filtering by specific user
       sql = `
         SELECT d.id, d.filename, d.created_at, d.file_size, d.mime_type,
                u.name as uploaded_by_name, u.role as uploaded_by_role
@@ -150,7 +143,6 @@ router.get(
       `;
       values = [filterUserId];
     } else {
-      // All users see all documents with uploader info
       sql = `
         SELECT d.id, d.filename, d.created_at, d.file_size, d.mime_type,
                u.name as uploaded_by_name, u.role as uploaded_by_role
@@ -175,6 +167,8 @@ router.get(
   checkRole(["admin", "officer", "viewer"]),
   (req, res) => {
     const docId = req.params.id;
+    console.log("Download requested for ID:", docId);
+    
     const sql = "SELECT * FROM documents WHERE id = ?";
 
     db.query(sql, [docId], (err, results) => {
@@ -189,10 +183,13 @@ router.get(
       }
 
       const doc = results[0];
+      console.log("Document:", doc.filename);
+      console.log("Primary data length:", doc.encrypted_data?.length);
+      console.log("Backup data length:", doc.backup_data?.length);
 
-      // ✅ REMOVED ownership check - ALL authenticated users can download ALL documents
-      // This is a government system where documents need to be shared
+      // ✅ REMOVED the early validation - let decryption attempt handle it
 
+      // Try primary decryption first
       try {
         const decryptedData = decryptData(
           doc.encrypted_data,
@@ -201,6 +198,7 @@ router.get(
           doc.auth_tag
         );
 
+        console.log("Primary decryption SUCCESS");
         logActivity(req.user.id, "DOWNLOAD_DOCUMENT", "SUCCESS");
         const contentType = doc.mime_type || "application/octet-stream";
         res.setHeader("Content-Type", contentType);
@@ -208,13 +206,21 @@ router.get(
           "Content-Disposition",
           `attachment; filename="${doc.filename}"`
         );
-        res.send(decryptedData);
+        return res.send(decryptedData);
 
-      } catch (err) {
-        console.error("TAMPER DETECTED:", err.message);
-        logActivity(req.user.id, "TAMPER_DETECTED", "WARNING", `Document ID: ${docId}`);
+      } catch (primaryErr) {
+        // Primary failed - try backup recovery
+        console.log("Primary decryption FAILED:", primaryErr.message);
+        console.log("Attempting backup recovery...");
         
-        console.log("Attempting recovery from backup...");
+        logActivity(req.user.id, "TAMPER_DETECTED", "WARNING", `Document ID: ${docId}, File: ${doc.filename}`);
+
+        // Check if backup data exists before trying recovery
+        if (!doc.backup_data || doc.backup_data.length < 100) {
+          console.log("Backup data also invalid");
+          logActivity(req.user.id, "RECOVERY_FAILED", "CRITICAL", `No valid backup for document ID: ${docId}`);
+          return res.status(400).json({ message: "Document corrupted and no valid backup available" });
+        }
 
         try {
           const recoveredData = decryptData(
@@ -224,6 +230,7 @@ router.get(
             normalizeToHex(doc.backup_auth_tag)
           );
 
+          console.log("Backup recovery SUCCESS!");
           logActivity(req.user.id, "RECOVERY_SUCCESS", "SUCCESS", `Document recovered: ${doc.filename}`);
 
           const contentType = doc.mime_type || "application/octet-stream";
@@ -236,16 +243,17 @@ router.get(
           return res.send(recoveredData);
 
         } catch (recoveryErr) {
-          console.error("RECOVERY FAILED:", recoveryErr.message);
+          console.error("Backup recovery FAILED:", recoveryErr.message);
           logActivity(req.user.id, "RECOVERY_FAILED", "CRITICAL", `Document ID: ${docId}`);
           return res.status(400).json({
-            message: "Data corrupted and cannot be recovered"
+            message: "Document corrupted and cannot be recovered"
           });
         }
       }
     });
   }
 );
+
 // ================= DELETE =================
 router.delete(
   "/:id",

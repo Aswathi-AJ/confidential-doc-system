@@ -6,7 +6,7 @@ import Toast from "../components/Toast";
 import { 
   FaUpload, 
   FaShieldAlt, 
-
+  FaTimes, 
 } from "react-icons/fa";
 import { MdSecurity } from "react-icons/md";
 import { RiGovernmentFill } from "react-icons/ri";
@@ -83,6 +83,13 @@ function UploadPage() {
     }
     
     setSelectedFile(file);
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    const fileInput = document.getElementById("fileInput");
+    if (fileInput) fileInput.value = "";
+    setToast({ message: "File removed", type: "info" });
   };
 
   const handleUpload = async () => {
@@ -322,6 +329,22 @@ function UploadPage() {
       padding: "12px",
       borderRadius: "10px",
       marginBottom: "20px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: "12px",
+      flexWrap: isMobile ? "wrap" : "nowrap",
+    },
+
+    fileDetails: {
+      flex: 1,
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+    },
+
+    fileText: {
+      flex: 1,
     },
 
     fileName: {
@@ -335,6 +358,22 @@ function UploadPage() {
       fontSize: "10px",
       color: "#94a3b8",
       marginTop: "3px",
+    },
+
+    removeButton: {
+      background: "rgba(248, 113, 113, 0.15)",
+      color: "#fca5a5",
+      border: "1px solid rgba(248, 113, 113, 0.4)",
+      padding: "6px 12px",
+      borderRadius: "8px",
+      cursor: "pointer",
+      fontSize: "11px",
+      fontWeight: "500",
+      display: "flex",
+      alignItems: "center",
+      gap: "5px",
+      transition: "all 0.2s ease",
+      whiteSpace: "nowrap",
     },
 
     securityBox: {
@@ -473,13 +512,17 @@ function UploadPage() {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              onClick={() => document.getElementById("fileInput").click()}
+              onClick={() => {
+                if (!selectedFile) {
+                  document.getElementById("fileInput").click();
+                }
+              }}
             >
               <div style={styles.uploadIcon}>
                 {selectedFile ? getFileIcon(selectedFile) : <FaUpload />}
               </div>
               <div style={styles.uploadText}>
-                {dragOver ? "Drop file to upload" : selectedFile ? "File Ready" : "Click or Drag File Here"}
+                {dragOver ? "Drop file to upload" : selectedFile ? "File Selected" : "Click or Drag File Here"}
               </div>
               <div style={styles.uploadHint}>
                 Supported: PDF, JPG, PNG, TXT • Max 50MB
@@ -493,35 +536,54 @@ function UploadPage() {
                 style={{ display: "none" }}
               />
 
-              <button
-                style={{
-                  background: "rgba(167, 139, 250, 0.15)",
-                  color: "#c4b5fd",
-                  padding: "6px 16px",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(167, 139, 250, 0.3)",
-                  fontWeight: "500",
-                  fontSize: "11px",
-                  cursor: "pointer",
-                  marginTop: "8px"
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  document.getElementById("fileInput").click();
-                }}
-              >
-                Select File
-              </button>
+              {!selectedFile && (
+                <button
+                  style={{
+                    background: "rgba(167, 139, 250, 0.15)",
+                    color: "#c4b5fd",
+                    padding: "6px 16px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(167, 139, 250, 0.3)",
+                    fontWeight: "500",
+                    fontSize: "11px",
+                    cursor: "pointer",
+                    marginTop: "8px"
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    document.getElementById("fileInput").click();
+                  }}
+                >
+                  Select File
+                </button>
+              )}
             </div>
 
             {selectedFile && (
               <div style={styles.fileInfo}>
-                <div style={styles.fileName}>
-                  {getFileIcon(selectedFile)} {selectedFile.name}
+                <div style={styles.fileDetails}>
+                  <span style={{ fontSize: "20px" }}>{getFileIcon(selectedFile)}</span>
+                  <div style={styles.fileText}>
+                    <div style={styles.fileName}>{selectedFile.name}</div>
+                    <div style={styles.fileSize}>
+                      {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • {getFileExtension(selectedFile.name)}
+                    </div>
+                  </div>
                 </div>
-                <div style={styles.fileSize}>
-                  {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • {getFileExtension(selectedFile.name)}
-                </div>
+                <button
+                  onClick={handleRemoveFile}
+                  style={styles.removeButton}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(248, 113, 113, 0.25)";
+                    e.currentTarget.style.transform = "scale(1.02)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(248, 113, 113, 0.15)";
+                    e.currentTarget.style.transform = "scale(1)";
+                  }}
+                >
+                  <FaTimes size={10} /> Remove
+                </button>
               </div>
             )}
 
@@ -541,6 +603,18 @@ function UploadPage() {
               onClick={handleUpload}
               disabled={!selectedFile || uploading}
               style={(!selectedFile || uploading) ? styles.uploadBtnDisabled : styles.uploadBtn}
+              onMouseEnter={(e) => {
+                if (selectedFile && !uploading) {
+                  e.currentTarget.style.opacity = "0.9";
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (selectedFile && !uploading) {
+                  e.currentTarget.style.opacity = "1";
+                  e.currentTarget.style.transform = "translateY(0)";
+                }
+              }}
             >
               {uploading ? "Encrypting & Uploading..." : "Encrypt & Upload Securely"}
             </button>

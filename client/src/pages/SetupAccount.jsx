@@ -2,12 +2,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import API from "../services/api";
+import Toast from "../components/Toast";
 import { 
   FaLock, 
   FaKey, 
   FaEye, 
   FaEyeSlash, 
-  FaShieldAlt 
+  FaCheckCircle,
+  FaTimesCircle
 } from "react-icons/fa";
 import { RiGovernmentFill } from "react-icons/ri";
 
@@ -18,9 +20,18 @@ function SetupAccount() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [toast, setToast] = useState(null);
   const navigate = useNavigate();
+
+  // Password strength states
+  const [passwordStrength, setPasswordStrength] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    special: false
+  });
 
   useEffect(() => {
     if (!token) {
@@ -28,16 +39,50 @@ function SetupAccount() {
     }
   }, [token]);
 
+  // Check password strength in real-time
+  useEffect(() => {
+    setPasswordStrength({
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /[0-9]/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    });
+  }, [password]);
+
+  const validatePassword = () => {
+    if (password.length < 8) {
+      setToast({ message: "Password must be at least 8 characters long", type: "error" });
+      return false;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setToast({ message: "Password must contain at least one uppercase letter", type: "error" });
+      return false;
+    }
+    if (!/[a-z]/.test(password)) {
+      setToast({ message: "Password must contain at least one lowercase letter", type: "error" });
+      return false;
+    }
+    if (!/[0-9]/.test(password)) {
+      setToast({ message: "Password must contain at least one number", type: "error" });
+      return false;
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      setToast({ message: "Password must contain at least one special character (!@#$%^&* etc.)", type: "error" });
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setToast({ message: "Passwords do not match", type: "error" });
       return;
     }
     
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (!validatePassword()) {
       return;
     }
     
@@ -46,13 +91,27 @@ function SetupAccount() {
     
     try {
       const response = await API.post("/auth/setup-account", { token, password });
-      setSuccess(response.data.message || "Account setup completed successfully!");
+      setToast({ message: response.data.message || "Account setup completed successfully!", type: "success" });
       setTimeout(() => navigate("/login"), 2500);
     } catch (err) {
-      setError(err.response?.data?.message || "Setup failed. Please try again.");
+      setToast({ message: err.response?.data?.message || "Setup failed. Please try again.", type: "error" });
     } finally {
       setLoading(false);
     }
+  };
+
+  const getStrengthColor = () => {
+    const passed = Object.values(passwordStrength).filter(v => v === true).length;
+    if (passed <= 2) return "#ef4444";
+    if (passed <= 4) return "#f59e0b";
+    return "#10b981";
+  };
+
+  const getStrengthText = () => {
+    const passed = Object.values(passwordStrength).filter(v => v === true).length;
+    if (passed <= 2) return "Weak";
+    if (passed <= 4) return "Medium";
+    return "Strong";
   };
 
   const styles = {
@@ -67,216 +126,209 @@ function SetupAccount() {
       fontFamily: "'Inter', system-ui, sans-serif",
       padding: "20px",
     },
-
     backgroundLayer: {
       position: "absolute",
       inset: 0,
       background: `
-        radial-gradient(circle at 30% 25%, rgba(103, 232, 249, 0.15) 0%, transparent 55%),
-        radial-gradient(circle at 70% 75%, rgba(167, 139, 250, 0.12) 0%, transparent 55%)
+        radial-gradient(circle at 30% 25%, rgba(103, 232, 249, 0.12) 0%, transparent 55%),
+        radial-gradient(circle at 70% 75%, rgba(167, 139, 250, 0.10) 0%, transparent 55%)
       `,
       zIndex: 1,
     },
-
     holographicGrid: {
       position: "absolute",
       inset: 0,
       zIndex: 2,
       backgroundImage: `
-        linear-gradient(rgba(103,232,249,0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(103,232,249,0.05) 1px, transparent 1px)
+        linear-gradient(rgba(103,232,249,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(103,232,249,0.04) 1px, transparent 1px)
       `,
-      backgroundSize: "45px 45px",
-      animation: "holoScan 14s linear infinite",
+      backgroundSize: "40px 40px",
+      animation: "holoScan 15s linear infinite",
       pointerEvents: "none",
     },
-
     card: {
       position: "relative",
       zIndex: 10,
-      background: "rgba(15, 15, 35, 0.90)",
+      background: "rgba(15, 15, 35, 0.92)",
       backdropFilter: "blur(24px)",
-      border: "1px solid rgba(167, 139, 250, 0.35)",
-      borderRadius: "28px",
-      padding: "32px 28px",
+      border: "1px solid rgba(103, 232, 249, 0.3)",
+      borderRadius: "24px",
+      padding: "28px 24px",
       width: "100%",
-      maxWidth: "400px",
-      boxShadow: `
-        0 30px 60px -20px rgba(0, 0, 0, 0.75),
-        0 0 0 1.5px rgba(167, 139, 250, 0.3),
-        inset 0 0 40px rgba(103, 232, 249, 0.08)
-      `,
+      maxWidth: "440px",
+      boxShadow: "0 20px 40px -12px rgba(0,0,0,0.5)",
     },
-
     govBadge: {
       display: "inline-flex",
       alignItems: "center",
       gap: "8px",
-      background: "rgba(167, 139, 250, 0.18)",
-      color: "#c4b5fd",
-      padding: "6px 16px",
-      borderRadius: "50px",
-      fontSize: "11px",
-      fontWeight: "700",
-      letterSpacing: "1px",
-      border: "1px solid rgba(167, 139, 250, 0.4)",
-      marginBottom: "24px",
+      background: "rgba(103, 232, 249, 0.12)",
+      color: "#67e8f9",
+      padding: "5px 14px",
+      borderRadius: "30px",
+      fontSize: "10px",
+      fontWeight: "600",
+      letterSpacing: "0.8px",
+      border: "1px solid rgba(103, 232, 249, 0.25)",
+      marginBottom: "20px",
       width: "fit-content",
     },
-
     iconWrapper: {
-      width: "64px",
-      height: "64px",
+      width: "56px",
+      height: "56px",
       background: "linear-gradient(135deg, #7c3aed, #22d3ee, #a855f7)",
-      borderRadius: "20px",
+      borderRadius: "16px",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      margin: "0 auto 24px",
+      margin: "0 auto 20px",
       position: "relative",
-      boxShadow: "0 0 50px rgba(103, 232, 249, 0.5)",
+      boxShadow: "0 0 35px rgba(103, 232, 249, 0.35)",
     },
-
     iconGlow: {
       position: "absolute",
-      inset: "-16px",
-      background: "radial-gradient(circle, rgba(103,232,249,0.45) 20%, transparent 70%)",
-      borderRadius: "inherit",
-      animation: "holoPulse 2.8s ease-in-out infinite",
+      inset: "-10px",
+      background: "radial-gradient(circle, rgba(103,232,249,0.3) 0%, transparent 70%)",
+      borderRadius: "22px",
+      animation: "holoPulse 3s ease-in-out infinite",
       zIndex: -1,
     },
-
     title: {
-      fontSize: "24px",
-      fontWeight: "800",
+      fontSize: "22px",
+      fontWeight: "700",
       color: "#f0f9ff",
       textAlign: "center",
       marginBottom: "6px",
       letterSpacing: "-0.5px",
-      textShadow: "0 0 15px rgba(103, 232, 249, 0.3)",
     },
-
     subtitle: {
-      fontSize: "13px",
+      fontSize: "12px",
       color: "#a5b4fc",
       textAlign: "center",
-      marginBottom: "28px",
-      lineHeight: "1.5",
+      marginBottom: "24px",
+      lineHeight: "1.4",
     },
-
-    errorAlert: {
-      background: "rgba(248, 113, 113, 0.15)",
-      border: "1px solid rgba(248, 113, 113, 0.45)",
-      color: "#fda4af",
-      padding: "10px 14px",
-      borderRadius: "14px",
-      marginBottom: "20px",
-      fontSize: "12px",
-      textAlign: "center",
-    },
-
-    successAlert: {
-      background: "rgba(103, 232, 249, 0.15)",
-      border: "1px solid rgba(103, 232, 249, 0.45)",
-      color: "#67e8f9",
-      padding: "10px 14px",
-      borderRadius: "14px",
-      marginBottom: "20px",
-      fontSize: "12px",
-      textAlign: "center",
-    },
-
     form: {
       display: "flex",
       flexDirection: "column",
-      gap: "18px",
+      gap: "16px",
     },
-
     inputGroup: {
       display: "flex",
       flexDirection: "column",
       gap: "6px",
     },
-
     label: {
-      fontSize: "12px",
+      fontSize: "11px",
       fontWeight: "600",
       color: "#c4b5fd",
       display: "flex",
       alignItems: "center",
       gap: "6px",
     },
-
     inputWrapper: {
       position: "relative",
     },
-
     input: {
       width: "100%",
-      padding: "12px 14px 12px 44px",
-      fontSize: "14px",
+      padding: "10px 12px 10px 40px",
+      fontSize: "13px",
       backgroundColor: "rgba(15, 15, 35, 0.85)",
-      border: "2px solid rgba(129, 140, 248, 0.4)",
-      borderRadius: "14px",
+      border: "1.5px solid rgba(129, 140, 248, 0.35)",
+      borderRadius: "10px",
       color: "#f0f9ff",
       outline: "none",
-      transition: "all 0.35s ease",
+      transition: "all 0.3s ease",
       fontFamily: "inherit",
       boxSizing: "border-box",
     },
-
     inputIcon: {
       position: "absolute",
-      left: "16px",
+      left: "14px",
       top: "50%",
       transform: "translateY(-50%)",
       color: "#818cf8",
-      fontSize: "16px",
+      fontSize: "14px",
     },
-
     togglePassword: {
       position: "absolute",
-      right: "16px",
+      right: "14px",
       top: "50%",
       transform: "translateY(-50%)",
       background: "none",
       border: "none",
       color: "#a5b4fc",
-      fontSize: "18px",
+      fontSize: "15px",
       cursor: "pointer",
     },
-
+    strengthContainer: {
+      marginTop: "8px",
+      padding: "8px",
+      background: "rgba(15,15,35,0.6)",
+      borderRadius: "8px",
+    },
+    strengthBar: {
+      height: "4px",
+      background: "#2a2a4a",
+      borderRadius: "2px",
+      overflow: "hidden",
+      marginBottom: "8px",
+    },
+    strengthFill: {
+      width: `${(Object.values(passwordStrength).filter(v => v === true).length / 5) * 100}%`,
+      height: "100%",
+      background: getStrengthColor(),
+      transition: "width 0.3s ease",
+    },
+    strengthText: {
+      fontSize: "10px",
+      color: getStrengthColor(),
+      textAlign: "right",
+      marginBottom: "8px",
+    },
+    rulesList: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "12px",
+      marginTop: "8px",
+    },
+    ruleItem: {
+      display: "flex",
+      alignItems: "center",
+      gap: "5px",
+      fontSize: "9px",
+      color: passwordStrength.length ? "#10b981" : "#94a3b8",
+    },
     button: {
       background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
       color: "#0a0a14",
-      padding: "12px",
-      fontSize: "14px",
+      padding: "10px",
+      fontSize: "13px",
       fontWeight: "700",
       border: "none",
-      borderRadius: "14px",
+      borderRadius: "10px",
       cursor: "pointer",
-      marginTop: "6px",
+      marginTop: "4px",
       width: "100%",
       transition: "all 0.3s ease",
-      boxShadow: "0 8px 25px rgba(103, 232, 249, 0.35)",
+      boxShadow: "0 4px 15px rgba(103, 232, 249, 0.3)",
     },
-
     buttonDisabled: {
       background: "#475569",
       color: "#94a3b8",
       cursor: "not-allowed",
       boxShadow: "none",
     },
-
     link: {
       color: "#67e8f9",
       textDecoration: "none",
-      fontSize: "12px",
+      fontSize: "11px",
       fontWeight: "500",
       textAlign: "center",
+      marginTop: "16px",
       display: "block",
-      marginTop: "18px",
-    }
+    },
   };
 
   if (!token && error) {
@@ -284,151 +336,170 @@ function SetupAccount() {
       <div style={styles.container}>
         <div style={styles.backgroundLayer} />
         <div style={styles.holographicGrid} />
-        <div style={{
-          background: "rgba(15,15,35,0.95)",
-          border: "1px solid rgba(167,139,250,0.4)",
-          borderRadius: "24px",
-          padding: "32px 28px",
-          textAlign: "center",
-          maxWidth: "400px",
-          boxShadow: "0 25px 60px rgba(0,0,0,0.6)"
-        }}>
-          <FaShieldAlt size={44} color="#fda4af" style={{ marginBottom: "16px" }} />
-          <div style={styles.errorAlert}>{error}</div>
-          <Link to="/login" style={styles.link}>← Back to Login</Link>
+        <div style={styles.card}>
+          <div style={{ color: "#fca5a5", textAlign: "center", fontSize: "12px" }}>{error}</div>
+          <Link to="/forgot-password" style={styles.link}>
+            Request New Setup Link
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.backgroundLayer} />
-      <div style={styles.holographicGrid} />
+    <>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <div style={styles.card}>
-        <div style={styles.govBadge}>
-          <RiGovernmentFill size={13} />
-          GOVERNMENT OF INDIA • SECURE ONBOARDING
-        </div>
+      <div style={styles.container}>
+        <div style={styles.backgroundLayer} />
+        <div style={styles.holographicGrid} />
 
-        <div style={styles.iconWrapper}>
-          <div style={styles.iconGlow} />
-          <FaKey size={30} color="#f0f9ff" />
-        </div>
-
-        <h1 style={styles.title}>Setup Your Account</h1>
-        <p style={styles.subtitle}>
-          Create a strong password to activate your secure access
-        </p>
-
-        {error && <div style={styles.errorAlert}>{error}</div>}
-        {success && <div style={styles.successAlert}>{success}</div>}
-
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>
-              <FaLock size={12} /> New Password
-            </label>
-            <div style={styles.inputWrapper}>
-              <FaLock style={styles.inputIcon} />
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Minimum 6 characters"
-                style={styles.input}
-                required
-                onFocus={(e) => {
-                  e.target.style.borderColor = "#67e8f9";
-                  e.target.style.boxShadow = "0 0 0 4px rgba(103, 232, 249, 0.2)";
-                  e.target.style.backgroundColor = "rgba(15, 15, 35, 0.95)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "rgba(129, 140, 248, 0.4)";
-                  e.target.style.boxShadow = "none";
-                  e.target.style.backgroundColor = "rgba(15, 15, 35, 0.85)";
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={styles.togglePassword}
-              >
-                {showPassword ? <FaEyeSlash /> : <FaEye />}
-              </button>
-            </div>
+        <div style={styles.card}>
+          <div style={styles.govBadge}>
+            <RiGovernmentFill size={11} />
+            GOVT OF INDIA • SECURE ONBOARDING
           </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>
-              <FaLock size={12} /> Confirm Password
-            </label>
-            <div style={styles.inputWrapper}>
-              <FaLock style={styles.inputIcon} />
-              <input
-                type={showPassword ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm your password"
-                style={styles.input}
-                required
-                onFocus={(e) => {
-                  e.target.style.borderColor = "#67e8f9";
-                  e.target.style.boxShadow = "0 0 0 4px rgba(103, 232, 249, 0.2)";
-                  e.target.style.backgroundColor = "rgba(15, 15, 35, 0.95)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "rgba(129, 140, 248, 0.4)";
-                  e.target.style.boxShadow = "none";
-                  e.target.style.backgroundColor = "rgba(15, 15, 35, 0.85)";
-                }}
-              />
-            </div>
+          <div style={styles.iconWrapper}>
+            <div style={styles.iconGlow} />
+            <FaKey size={26} color="#f0f9ff" />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={loading ? styles.buttonDisabled : styles.button}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 12px 30px rgba(103, 232, 249, 0.45)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 8px 25px rgba(103, 232, 249, 0.35)";
-              }
-            }}
-          >
-            {loading ? "Setting up secure account..." : "Complete Registration"}
-          </button>
-        </form>
+          <h1 style={styles.title}>Setup Your Account</h1>
+          <p style={styles.subtitle}>
+            Create a strong password to activate your secure access
+          </p>
 
-        <Link to="/login" style={styles.link}>
-          ← Back to Login
-        </Link>
+          <form onSubmit={handleSubmit} style={styles.form}>
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>
+                <FaLock size={10} /> New Password
+              </label>
+              <div style={styles.inputWrapper}>
+                <FaLock style={styles.inputIcon} />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Create a strong password"
+                  style={styles.input}
+                  required
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#67e8f9";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(103, 232, 249, 0.15)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "rgba(129, 140, 248, 0.35)";
+                    e.target.style.boxShadow = "none";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={styles.togglePassword}
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+
+              {/* Password Strength Indicator */}
+              {password && (
+                <div style={styles.strengthContainer}>
+                  <div style={styles.strengthBar}>
+                    <div style={styles.strengthFill} />
+                  </div>
+                  <div style={styles.strengthText}>
+                    Password Strength: {getStrengthText()}
+                  </div>
+                  <div style={styles.rulesList}>
+                    <div style={styles.ruleItem}>
+                      {passwordStrength.length ? <FaCheckCircle size={8} /> : <FaTimesCircle size={8} />}
+                      8+ characters
+                    </div>
+                    <div style={styles.ruleItem}>
+                      {passwordStrength.uppercase ? <FaCheckCircle size={8} /> : <FaTimesCircle size={8} />}
+                      Uppercase
+                    </div>
+                    <div style={styles.ruleItem}>
+                      {passwordStrength.lowercase ? <FaCheckCircle size={8} /> : <FaTimesCircle size={8} />}
+                      Lowercase
+                    </div>
+                    <div style={styles.ruleItem}>
+                      {passwordStrength.number ? <FaCheckCircle size={8} /> : <FaTimesCircle size={8} />}
+                      Number
+                    </div>
+                    <div style={styles.ruleItem}>
+                      {passwordStrength.special ? <FaCheckCircle size={8} /> : <FaTimesCircle size={8} />}
+                      Special char
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>
+                <FaLock size={10} /> Confirm Password
+              </label>
+              <div style={styles.inputWrapper}>
+                <FaLock style={styles.inputIcon} />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your password"
+                  style={styles.input}
+                  required
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#67e8f9";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(103, 232, 249, 0.15)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "rgba(129, 140, 248, 0.35)";
+                    e.target.style.boxShadow = "none";
+                  }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={loading ? styles.buttonDisabled : styles.button}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 8px 20px rgba(103, 232, 249, 0.4)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 4px 15px rgba(103, 232, 249, 0.3)";
+                }
+              }}
+            >
+              {loading ? "Setting up secure account..." : "Complete Registration"}
+            </button>
+          </form>
+
+          <Link to="/login" style={styles.link}>
+            ← Back to Login
+          </Link>
+        </div>
+
+        <style jsx>{`
+          @keyframes holoScan {
+            0% { background-position: 0 0; }
+            100% { background-position: 80px 80px; }
+          }
+          @keyframes holoPulse {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.08); }
+          }
+        `}</style>
       </div>
-
-      <style jsx>{`
-        @keyframes holoScan {
-          0% { background-position: 0 0; }
-          100% { background-position: 400px 400px; }
-        }
-
-        @keyframes holoPulse {
-          0%, 100% { opacity: 0.6; transform: scale(1); }
-          50% { opacity: 0.9; transform: scale(1.15); }
-        }
-
-        input:focus {
-          border-color: #67e8f9 !important;
-        }
-      `}</style>
-    </div>
+    </>
   );
 }
 

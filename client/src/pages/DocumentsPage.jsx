@@ -261,6 +261,7 @@ function DocumentsPage() {
     searchWrapper: {
       position: "relative",
       marginBottom: "20px",
+      width: "100%",
     },
 
     searchIcon: {
@@ -281,6 +282,7 @@ function DocumentsPage() {
       color: "#f0f9ff",
       fontSize: "12px",
       outline: "none",
+      boxSizing: "border-box",
     },
 
     tableWrapper: {

@@ -2,30 +2,29 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import API from "../services/api";
+import Toast from "../components/Toast";
 import { 
   FaEnvelope, 
   FaKey, 
+  FaArrowLeft
 } from "react-icons/fa";
 import { RiGovernmentFill } from "react-icons/ri";
 
 function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
-    setMessage("");
 
     try {
       const response = await API.post("/auth/forgot-password", { email });
-      setMessage(response.data.message || "Reset link sent to your email");
+      setToast({ message: response.data.message || "Reset link sent to your email", type: "success" });
       setEmail("");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to send reset link");
+      setToast({ message: err.response?.data?.message || "Failed to send reset link", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -138,28 +137,6 @@ function ForgotPassword() {
       lineHeight: "1.4",
     },
 
-    errorAlert: {
-      background: "rgba(248, 113, 113, 0.12)",
-      border: "1px solid rgba(248, 113, 113, 0.3)",
-      color: "#fca5a5",
-      padding: "10px 14px",
-      borderRadius: "10px",
-      marginBottom: "16px",
-      fontSize: "12px",
-      textAlign: "center",
-    },
-
-    successAlert: {
-      background: "rgba(103, 232, 249, 0.12)",
-      border: "1px solid rgba(103, 232, 249, 0.3)",
-      color: "#67e8f9",
-      padding: "10px 14px",
-      borderRadius: "10px",
-      marginBottom: "16px",
-      fontSize: "12px",
-      textAlign: "center",
-    },
-
     form: {
       display: "flex",
       flexDirection: "column",
@@ -239,95 +216,96 @@ function ForgotPassword() {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.backgroundLayer} />
-      <div style={styles.holographicGrid} />
+    <>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <div style={styles.card}>
-        <div style={styles.govBadge}>
-          <RiGovernmentFill size={11} />
-          GOVT OF INDIA • PASSWORD RECOVERY
-        </div>
+      <div style={styles.container}>
+        <div style={styles.backgroundLayer} />
+        <div style={styles.holographicGrid} />
 
-        <div style={styles.iconWrapper}>
-          <div style={styles.iconGlow} />
-          <FaKey size={26} color="#f0f9ff" />
-        </div>
-
-        <h1 style={styles.title}>Forgot Password</h1>
-        <p style={styles.subtitle}>
-          Enter your registered email to receive a reset link
-        </p>
-
-        {error && <div style={styles.errorAlert}>{error}</div>}
-        {message && <div style={styles.successAlert}>{message}</div>}
-
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Official Email</label>
-            <div style={styles.inputWrapper}>
-              <FaEnvelope style={styles.inputIcon} />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="officer.name@gov.in"
-                style={styles.input}
-                required
-                onFocus={(e) => {
-                  e.target.style.borderColor = "#67e8f9";
-                  e.target.style.boxShadow = "0 0 0 3px rgba(103, 232, 249, 0.15)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "rgba(129, 140, 248, 0.35)";
-                  e.target.style.boxShadow = "none";
-                }}
-              />
-            </div>
+        <div style={styles.card}>
+          <div style={styles.govBadge}>
+            <RiGovernmentFill size={11} />
+            GOVT OF INDIA • PASSWORD RECOVERY
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={loading ? styles.buttonDisabled : styles.button}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 8px 20px rgba(103, 232, 249, 0.4)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 15px rgba(103, 232, 249, 0.3)";
-              }
-            }}
-          >
-            {loading ? "Sending Reset Link..." : "Send Reset Link"}
-          </button>
-        </form>
+          <div style={styles.iconWrapper}>
+            <div style={styles.iconGlow} />
+            <FaKey size={26} color="#f0f9ff" />
+          </div>
 
-        <Link to="/login" style={styles.link}>
-          ← Back to Login
-        </Link>
+          <h1 style={styles.title}>Forgot Password</h1>
+          <p style={styles.subtitle}>
+            Enter your registered email to receive a reset link
+          </p>
+
+          <form onSubmit={handleSubmit} style={styles.form}>
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Official Email</label>
+              <div style={styles.inputWrapper}>
+                <FaEnvelope style={styles.inputIcon} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="officer.name@gov.in"
+                  style={styles.input}
+                  required
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#67e8f9";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(103, 232, 249, 0.15)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "rgba(129, 140, 248, 0.35)";
+                    e.target.style.boxShadow = "none";
+                  }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={loading ? styles.buttonDisabled : styles.button}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 8px 20px rgba(103, 232, 249, 0.4)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 4px 15px rgba(103, 232, 249, 0.3)";
+                }
+              }}
+            >
+              {loading ? "Sending Reset Link..." : "Send Reset Link"}
+            </button>
+          </form>
+
+          <Link to="/login" style={styles.link}>
+            <FaArrowLeft size={10} style={{ marginRight: "4px" }} /> Back to Login
+          </Link>
+        </div>
+
+        <style jsx>{`
+          @keyframes holoScan {
+            0% { background-position: 0 0; }
+            100% { background-position: 80px 80px; }
+          }
+
+          @keyframes holoPulse {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.08); }
+          }
+
+          input:focus {
+            border-color: #67e8f9 !important;
+          }
+        `}</style>
       </div>
-
-      <style jsx>{`
-        @keyframes holoScan {
-          0% { background-position: 0 0; }
-          100% { background-position: 80px 80px; }
-        }
-
-        @keyframes holoPulse {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 0.7; transform: scale(1.08); }
-        }
-
-        input:focus {
-          border-color: #67e8f9 !important;
-        }
-      `}</style>
-    </div>
+    </>
   );
 }
 
