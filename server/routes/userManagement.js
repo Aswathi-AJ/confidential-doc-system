@@ -1,6 +1,7 @@
 const express = require("express");
 const argon2 = require("argon2");
 const crypto = require("crypto");
+const { body, validationResult, param } = require('express-validator');
 const verifyToken = require("../middleware/authMiddleware");
 const checkRole = require("../middleware/roleMiddleware");
 const db = require("../config/db");
@@ -8,27 +9,65 @@ const router = express.Router();
 const logActivity = require("../utils/logger");
 const { sendSetupLinkEmail, sendPasswordResetLink } = require("../utils/mailer");
 
-// ================= GET ALL USERS =================
+// ================= HELPER: Sanitize Input =================
+const sanitizeString = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return str.replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  }).trim();
+};
+
+// ================= GET ALL USERS (with lock status) =================
 router.get("/users", verifyToken, checkRole(["admin"]), (req, res) => {
-  const sql = "SELECT id, name, email, role, created_at, updated_at FROM users ORDER BY created_at DESC";
+  const sql = `
+    SELECT u.id, u.name, u.email, u.role, u.created_at, u.updated_at,
+           (SELECT COUNT(*) FROM login_attempts WHERE email = u.email 
+            AND attempt_time > DATE_SUB(NOW(), INTERVAL 30 MINUTE)) >= 5 as is_locked
+    FROM users u
+    ORDER BY u.created_at DESC
+  `;
+  
   db.query(sql, (err, results) => {
     if (err) return res.status(500).json({ message: "Database error" });
     res.json(results);
   });
 });
 
-// ================= CREATE NEW USER (SECURE - NO PASSWORD IN EMAIL) =================
-router.post("/users", verifyToken, checkRole(["admin"]), async (req, res) => {
-  const { name, email, role } = req.body;
+// ================= CREATE NEW USER (With Validation) =================
+router.post("/users", [
+  verifyToken,
+  checkRole(["admin"]),
+  body('name')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Name must be between 2 and 100 characters')
+    .matches(/^[a-zA-Z\s]+$/)
+    .withMessage('Name can only contain letters and spaces'),
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+    .normalizeEmail()
+    .trim(),
+  body('role')
+    .isIn(['admin', 'officer', 'viewer'])
+    .withMessage('Invalid role selected')
+], async (req, res) => {
+  // Check validation errors
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ message: errors.array()[0].msg });
+  }
+
+  let { name, email, role } = req.body;
+  
+  // Sanitize inputs
+  name = sanitizeString(name);
+  email = sanitizeString(email);
   
   console.log("Creating user:", { name, email, role });
-  
-  if (!name || !email) {
-    return res.status(400).json({ message: "Name and email are required" });
-  }
-  if (!["admin", "officer", "viewer"].includes(role)) {
-    return res.status(400).json({ message: "Invalid role" });
-  }
   
   try {
     // Check if user already exists
@@ -44,13 +83,13 @@ router.post("/users", verifyToken, checkRole(["admin"]), async (req, res) => {
       return res.status(400).json({ message: "User with this email already exists" });
     }
     
-    // Generate temporary random password (will be hashed but user never sees it)
+    // Generate temporary random password (hashed, user never sees it)
     const tempPassword = crypto.randomBytes(12).toString("hex");
     const hashedPassword = await argon2.hash(tempPassword);
     
     // Generate setup token (expires in 24 hours)
     const setupToken = crypto.randomBytes(32).toString("hex");
-    const setupExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const setupExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
     
     const sql = `INSERT INTO users (name, email, password, role, setup_token, setup_expiry, created_at, updated_at) 
                  VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`;
@@ -63,7 +102,7 @@ router.post("/users", verifyToken, checkRole(["admin"]), async (req, res) => {
       
       console.log("User created with ID:", result.insertId);
       
-      // Send setup link email (NO PASSWORD in email!)
+      // Send setup link email (NO PASSWORD in email)
       const setupUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/setup-account?token=${setupToken}`;
       const emailSent = await sendSetupLinkEmail(email, name, setupUrl, role);
       
@@ -82,12 +121,26 @@ router.post("/users", verifyToken, checkRole(["admin"]), async (req, res) => {
   }
 });
 
-// ================= RESET PASSWORD (WITH RESET LINK - NO PASSWORD IN EMAIL) =================
-router.post("/users/:id/reset-password", verifyToken, checkRole(["admin"]), async (req, res) => {
+// ================= RESET PASSWORD (With Validation) =================
+router.post("/users/:id/reset-password", [
+  verifyToken,
+  checkRole(["admin"]),
+  param('id').isInt().withMessage('Invalid user ID')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ message: errors.array()[0].msg });
+  }
+
   const userId = req.params.id;
   
+  // Prevent self reset? Optional - admin can reset own password too
+  if (parseInt(userId) === req.user.id) {
+    return res.status(400).json({ message: "Use change password option for your own account" });
+  }
+  
   try {
-    // Get user details first
+    // Get user details
     const getUserSql = "SELECT name, email FROM users WHERE id = ?";
     const user = await new Promise((resolve, reject) => {
       db.query(getUserSql, [userId], (err, result) => {
@@ -100,14 +153,14 @@ router.post("/users/:id/reset-password", verifyToken, checkRole(["admin"]), asyn
     
     // Generate reset token (expires in 1 hour)
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000);
     
     // Save reset token in database
     const updateSql = "UPDATE users SET reset_token = ?, reset_expiry = ? WHERE id = ?";
     db.query(updateSql, [resetToken, resetExpiry, userId], async (err) => {
       if (err) return res.status(500).json({ message: "Failed to generate reset link" });
       
-      // Send reset link email (NO PASSWORD in email!)
+      // Send reset link email (NO PASSWORD in email)
       const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password?token=${resetToken}`;
       const emailSent = await sendPasswordResetLink(user.email, user.name, resetUrl);
       
@@ -126,7 +179,16 @@ router.post("/users/:id/reset-password", verifyToken, checkRole(["admin"]), asyn
 });
 
 // ================= DELETE USER =================
-router.delete("/users/:id", verifyToken, checkRole(["admin"]), (req, res) => {
+router.delete("/users/:id", [
+  verifyToken,
+  checkRole(["admin"]),
+  param('id').isInt().withMessage('Invalid user ID')
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ message: errors.array()[0].msg });
+  }
+
   const userId = req.params.id;
   
   if (parseInt(userId) === req.user.id) {
@@ -143,13 +205,20 @@ router.delete("/users/:id", verifyToken, checkRole(["admin"]), (req, res) => {
 });
 
 // ================= UPDATE USER ROLE =================
-router.put("/users/:id/role", verifyToken, checkRole(["admin"]), (req, res) => {
+router.put("/users/:id/role", [
+  verifyToken,
+  checkRole(["admin"]),
+  param('id').isInt().withMessage('Invalid user ID'),
+  body('role').isIn(['admin', 'officer', 'viewer']).withMessage('Invalid role')
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ message: errors.array()[0].msg });
+  }
+
   const userId = req.params.id;
   const { role } = req.body;
   
-  if (!["admin", "officer", "viewer"].includes(role)) {
-    return res.status(400).json({ message: "Invalid role" });
-  }
   if (parseInt(userId) === req.user.id) {
     return res.status(400).json({ message: "You cannot change your own role" });
   }
@@ -164,7 +233,16 @@ router.put("/users/:id/role", verifyToken, checkRole(["admin"]), (req, res) => {
 });
 
 // ================= GET USER BY ID =================
-router.get("/users/:id", verifyToken, checkRole(["admin"]), (req, res) => {
+router.get("/users/:id", [
+  verifyToken,
+  checkRole(["admin"]),
+  param('id').isInt().withMessage('Invalid user ID')
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ message: errors.array()[0].msg });
+  }
+
   const userId = req.params.id;
   const sql = "SELECT id, name, email, role, created_at, updated_at FROM users WHERE id = ?";
   db.query(sql, [userId], (err, results) => {

@@ -2,19 +2,68 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL: "http://localhost:5000/api",
-  withCredentials: false
+  withCredentials: true
 });
 
-// Add token to every request
+// ================= XSS PROTECTION: Sanitize Input =================
+const sanitizeInput = (input) => {
+  if (input === null || input === undefined) return input;
+  if (typeof input !== 'string') return input;
+  
+  return input
+    .replace(/[&<>]/g, function(m) {
+      if (m === '&') return '&amp;';
+      if (m === '<') return '&lt;';
+      if (m === '>') return '&gt;';
+      return m;
+    })
+    .trim();
+};
+
+// Recursively sanitize objects and arrays
+const sanitizeData = (data) => {
+  if (data === null || data === undefined) return data;
+  
+  if (typeof data === 'string') {
+    return sanitizeInput(data);
+  }
+  
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeData(item));
+  }
+  
+  if (typeof data === 'object') {
+    const sanitizedObj = {};
+    for (const key in data) {
+      if (data.hasOwnProperty(key)) {
+        sanitizedObj[key] = sanitizeData(data[key]);
+      }
+    }
+    return sanitizedObj;
+  }
+  
+  return data;
+};
+
+// ================= REQUEST INTERCEPTOR =================
 API.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    // Sanitize request data (prevent XSS)
+    if (config.data) {
+      config.data = sanitizeData(config.data);
+    }
+    
+    // Sanitize URL parameters
+    if (config.params) {
+      config.params = sanitizeData(config.params);
+    }
+    
+    // Add token to headers
     const token = localStorage.getItem("token");
-    console.log("API Interceptor - Token exists:", token ? "Yes" : "No");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log("API Interceptor - Added Authorization header");
     }
-    console.log("API Interceptor - Request URL:", config.url);
+    
     return config;
   },
   (error) => {
@@ -23,20 +72,42 @@ API.interceptors.request.use(
   }
 );
 
-// Handle 401 responses
+// ================= RESPONSE INTERCEPTOR =================
 API.interceptors.response.use(
   (response) => {
-    console.log("API Interceptor - Response success:", response.config.url);
+    if (response.data) {
+      response.data = sanitizeData(response.data);
+    }
     return response;
   },
-  (error) => {
-    console.error("API Interceptor - Response error:", error.response?.status, error.response?.config?.url);
-    if (error.response?.status === 401) {
-      console.log("API Interceptor - 401 detected, clearing localStorage and redirecting");
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // Handle 401 Unauthorized (Token expired)
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";
+      return Promise.reject(error);
     }
+    
+    // Handle 403 Forbidden
+    if (error.response?.status === 403) {
+      console.error("Access denied:", error.response?.data?.message);
+      alert(error.response?.data?.message || "You don't have permission to perform this action.");
+    }
+    
+    // Handle 423 Locked (Account locked)
+    if (error.response?.status === 423) {
+      alert(error.response?.data?.message || "Account temporarily locked. Please try again after 30 minutes.");
+    }
+    
+    // Handle 429 Too Many Requests
+    if (error.response?.status === 429) {
+      alert("Too many requests. Please try again later.");
+    }
+    
     return Promise.reject(error);
   }
 );

@@ -20,7 +20,9 @@ import {
   FaCalendarAlt,
   FaTrash,
   FaKey,
-  FaTimes
+  FaTimes,
+  FaCheckCircle,
+  FaTimesCircle
 } from "react-icons/fa";
 import { RiGovernmentFill } from "react-icons/ri";
 
@@ -574,10 +576,13 @@ function Dashboard() {
     changePasswordModal: {
       background: "rgba(15, 15, 35, 0.98)",
       border: "1px solid rgba(167, 139, 250, 0.4)",
-      borderRadius: "16px",
-      padding: "24px",
+      borderRadius: "20px",
+      padding: "28px",
       width: "90%",
-      maxWidth: "420px",
+      maxWidth: "480px",
+      maxHeight: "90vh",
+      overflowY: "auto",
+      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
     },
 
     loadingState: {
@@ -912,137 +917,309 @@ function Dashboard() {
         {showChangePassword && (
           <div style={styles.modalOverlay} onClick={() => setShowChangePassword(false)}>
             <div style={styles.changePasswordModal} onClick={e => e.stopPropagation()}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                <h3 style={{ color: "#f0f9ff", fontSize: "18px", margin: 0 }}>Change Password</h3>
-                <button onClick={() => setShowChangePassword(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer" }}>
-                  <FaTimes size={16} />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", borderBottom: "1px solid rgba(167, 139, 250, 0.2)", paddingBottom: "16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <FaKey size={20} color="#67e8f9" />
+                  <h3 style={{ color: "#f0f9ff", fontSize: "18px", margin: 0, fontWeight: "600" }}>Change Password</h3>
+                </div>
+                <button 
+                  onClick={() => setShowChangePassword(false)} 
+                  style={{ 
+                    background: "rgba(148, 163, 184, 0.2)", 
+                    border: "none", 
+                    color: "#9ca3af", 
+                    cursor: "pointer",
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(248, 113, 113, 0.2)";
+                    e.currentTarget.style.color = "#fca5a5";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(148, 163, 184, 0.2)";
+                    e.currentTarget.style.color = "#9ca3af";
+                  }}
+                >
+                  <FaTimes size={14} />
                 </button>
               </div>
               
-              <div style={{ marginBottom: "16px" }}>
-                <label style={{ color: "#c4b5fd", display: "block", marginBottom: "6px", fontSize: "12px" }}>Current Password</label>
-                <input
-                  type="password"
-                  value={passwordData.currentPassword}
-                  onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
-                  placeholder="Enter your current password"
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    background: "rgba(15,15,35,0.85)",
-                    border: "1.5px solid rgba(129,140,248,0.35)",
-                    borderRadius: "10px",
-                    color: "#f0f9ff",
-                    fontSize: "13px",
-                    outline: "none"
-                  }}
-                />
-              </div>
-              
-              <div style={{ marginBottom: "16px" }}>
-                <label style={{ color: "#c4b5fd", display: "block", marginBottom: "6px", fontSize: "12px" }}>New Password</label>
-                <input
-                  type="password"
-                  value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
-                  placeholder="Min 8 chars, uppercase, number & special char"
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    background: "rgba(15,15,35,0.85)",
-                    border: "1.5px solid rgba(129,140,248,0.35)",
-                    borderRadius: "10px",
-                    color: "#f0f9ff",
-                    fontSize: "13px",
-                    outline: "none"
-                  }}
-                />
+              <form onSubmit={(e) => { e.preventDefault(); handleChangePassword(); }}>
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ color: "#c4b5fd", display: "block", marginBottom: "8px", fontSize: "12px", fontWeight: "500" }}>
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                    placeholder="Enter your current password"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      background: "rgba(15,15,35,0.85)",
+                      border: "1.5px solid rgba(129,140,248,0.35)",
+                      borderRadius: "10px",
+                      color: "#f0f9ff",
+                      fontSize: "13px",
+                      outline: "none",
+                      transition: "all 0.2s ease",
+                      boxSizing: "border-box"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#67e8f9";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(103, 232, 249, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "rgba(129,140,248,0.35)";
+                      e.target.style.boxShadow = "none";
+                    }}
+                    required
+                  />
+                </div>
                 
-                {passwordData.newPassword && (
-                  <div style={{ marginTop: "8px", padding: "8px", background: "rgba(15,15,35,0.6)", borderRadius: "8px" }}>
-                    <div style={{ height: "4px", background: "#2a2a4a", borderRadius: "2px", overflow: "hidden", marginBottom: "8px" }}>
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ color: "#c4b5fd", display: "block", marginBottom: "8px", fontSize: "12px", fontWeight: "500" }}>
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                    placeholder="Minimum 8 characters with uppercase, lowercase, number & special character"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      background: "rgba(15,15,35,0.85)",
+                      border: "1.5px solid rgba(129,140,248,0.35)",
+                      borderRadius: "10px",
+                      color: "#f0f9ff",
+                      fontSize: "13px",
+                      outline: "none",
+                      transition: "all 0.2s ease",
+                      boxSizing: "border-box"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#67e8f9";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(103, 232, 249, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "rgba(129,140,248,0.35)";
+                      e.target.style.boxShadow = "none";
+                    }}
+                    required
+                  />
+                  
+                  {/* Password Strength Indicator */}
+                  {passwordData.newPassword && (
+                    <div style={{ 
+                      marginTop: "12px", 
+                      padding: "12px", 
+                      background: "rgba(15,15,35,0.6)", 
+                      borderRadius: "10px",
+                      border: "1px solid rgba(167, 139, 250, 0.15)"
+                    }}>
+                      <div style={{ marginBottom: "10px" }}>
+                        <div style={{ 
+                          height: "6px", 
+                          background: "#2a2a4a", 
+                          borderRadius: "3px", 
+                          overflow: "hidden" 
+                        }}>
+                          <div style={{ 
+                            width: `${(Object.values(passwordStrength).filter(v => v === true).length / 5) * 100}%`,
+                            height: "100%",
+                            background: getStrengthColor(),
+                            transition: "width 0.3s ease",
+                            borderRadius: "3px"
+                          }} />
+                        </div>
+                        <div style={{ 
+                          fontSize: "11px", 
+                          color: getStrengthColor(), 
+                          textAlign: "right", 
+                          marginTop: "6px",
+                          fontWeight: "500"
+                        }}>
+                          Password Strength: {getStrengthText()}
+                        </div>
+                      </div>
+                      
                       <div style={{ 
-                        width: `${(Object.values(passwordStrength).filter(v => v === true).length / 5) * 100}%`,
-                        height: "100%",
-                        background: getStrengthColor(),
-                        transition: "width 0.3s ease"
-                      }} />
+                        display: "grid", 
+                        gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", 
+                        gap: "8px",
+                        marginTop: "8px"
+                      }}>
+                        <div style={{ 
+                          display: "flex", 
+                          alignItems: "center", 
+                          gap: "6px",
+                          fontSize: "10px",
+                          color: passwordStrength.length ? "#10b981" : "#94a3b8"
+                        }}>
+                          {passwordStrength.length ? <FaCheckCircle size={10} /> : <FaTimesCircle size={10} />}
+                          <span>At least 8 characters</span>
+                        </div>
+                        <div style={{ 
+                          display: "flex", 
+                          alignItems: "center", 
+                          gap: "6px",
+                          fontSize: "10px",
+                          color: passwordStrength.uppercase ? "#10b981" : "#94a3b8"
+                        }}>
+                          {passwordStrength.uppercase ? <FaCheckCircle size={10} /> : <FaTimesCircle size={10} />}
+                          <span>One uppercase letter</span>
+                        </div>
+                        <div style={{ 
+                          display: "flex", 
+                          alignItems: "center", 
+                          gap: "6px",
+                          fontSize: "10px",
+                          color: passwordStrength.lowercase ? "#10b981" : "#94a3b8"
+                        }}>
+                          {passwordStrength.lowercase ? <FaCheckCircle size={10} /> : <FaTimesCircle size={10} />}
+                          <span>One lowercase letter</span>
+                        </div>
+                        <div style={{ 
+                          display: "flex", 
+                          alignItems: "center", 
+                          gap: "6px",
+                          fontSize: "10px",
+                          color: passwordStrength.number ? "#10b981" : "#94a3b8"
+                        }}>
+                          {passwordStrength.number ? <FaCheckCircle size={10} /> : <FaTimesCircle size={10} />}
+                          <span>One number</span>
+                        </div>
+                        <div style={{ 
+                          display: "flex", 
+                          alignItems: "center", 
+                          gap: "6px",
+                          fontSize: "10px",
+                          color: passwordStrength.special ? "#10b981" : "#94a3b8"
+                        }}>
+                          {passwordStrength.special ? <FaCheckCircle size={10} /> : <FaTimesCircle size={10} />}
+                          <span>One special character (!@#$%^&*)</span>
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ fontSize: "10px", color: getStrengthColor(), textAlign: "right", marginBottom: "8px" }}>
-                      Strength: {getStrengthText()}
+                  )}
+                </div>
+                
+                <div style={{ marginBottom: "28px" }}>
+                  <label style={{ color: "#c4b5fd", display: "block", marginBottom: "8px", fontSize: "12px", fontWeight: "500" }}>
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                    placeholder="Re-enter your new password"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      background: "rgba(15,15,35,0.85)",
+                      border: "1.5px solid rgba(129,140,248,0.35)",
+                      borderRadius: "10px",
+                      color: "#f0f9ff",
+                      fontSize: "13px",
+                      outline: "none",
+                      transition: "all 0.2s ease",
+                      boxSizing: "border-box"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#67e8f9";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(103, 232, 249, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "rgba(129,140,248,0.35)";
+                      e.target.style.boxShadow = "none";
+                    }}
+                    required
+                  />
+                  {passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword && (
+                    <div style={{ 
+                      marginTop: "8px", 
+                      fontSize: "10px", 
+                      color: "#f87171",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px"
+                    }}>
+                      <FaTimesCircle size={10} /> Passwords do not match
                     </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-                      <span style={{ fontSize: "9px", color: passwordStrength.length ? "#10b981" : "#94a3b8" }}>
-                        {passwordStrength.length ? "✅" : "❌"} 8+ chars
-                      </span>
-                      <span style={{ fontSize: "9px", color: passwordStrength.uppercase ? "#10b981" : "#94a3b8" }}>
-                        {passwordStrength.uppercase ? "✅" : "❌"} Uppercase
-                      </span>
-                      <span style={{ fontSize: "9px", color: passwordStrength.lowercase ? "#10b981" : "#94a3b8" }}>
-                        {passwordStrength.lowercase ? "✅" : "❌"} Lowercase
-                      </span>
-                      <span style={{ fontSize: "9px", color: passwordStrength.number ? "#10b981" : "#94a3b8" }}>
-                        {passwordStrength.number ? "✅" : "❌"} Number
-                      </span>
-                      <span style={{ fontSize: "9px", color: passwordStrength.special ? "#10b981" : "#94a3b8" }}>
-                        {passwordStrength.special ? "✅" : "❌"} Special char
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <div style={{ marginBottom: "20px" }}>
-                <label style={{ color: "#c4b5fd", display: "block", marginBottom: "6px", fontSize: "12px" }}>Confirm New Password</label>
-                <input
-                  type="password"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
-                  placeholder="Re-enter your new password"
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    background: "rgba(15,15,35,0.85)",
-                    border: "1.5px solid rgba(129,140,248,0.35)",
-                    borderRadius: "10px",
-                    color: "#f0f9ff",
-                    fontSize: "13px",
-                    outline: "none"
-                  }}
-                />
-              </div>
-              
-              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-                <button
-                  onClick={() => setShowChangePassword(false)}
-                  style={{
-                    padding: "8px 20px",
-                    background: "rgba(148,163,184,0.2)",
-                    color: "#e0f2fe",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "12px"
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleChangePassword}
-                  style={{
-                    padding: "8px 20px",
-                    background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
-                    color: "#0a0a14",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontWeight: "600",
-                    fontSize: "12px"
-                  }}
-                >
-                  Change Password
-                </button>
-              </div>
+                  )}
+                </div>
+                
+                <div style={{ 
+                  display: "flex", 
+                  gap: "12px", 
+                  justifyContent: "flex-end",
+                  borderTop: "1px solid rgba(167, 139, 250, 0.2)",
+                  paddingTop: "20px",
+                  marginTop: "8px"
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowChangePassword(false);
+                      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                    }}
+                    style={{
+                      padding: "10px 24px",
+                      background: "rgba(148,163,184,0.15)",
+                      color: "#e0f2fe",
+                      border: "1px solid rgba(148,163,184,0.3)",
+                      borderRadius: "10px",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      fontWeight: "500",
+                      transition: "all 0.2s ease"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(148,163,184,0.25)";
+                      e.currentTarget.style.borderColor = "rgba(148,163,184,0.5)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(148,163,184,0.15)";
+                      e.currentTarget.style.borderColor = "rgba(148,163,184,0.3)";
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    style={{
+                      padding: "10px 28px",
+                      background: "linear-gradient(90deg, #7c3aed, #22d3ee)",
+                      color: "#0a0a14",
+                      border: "none",
+                      borderRadius: "10px",
+                      cursor: "pointer",
+                      fontWeight: "600",
+                      fontSize: "12px",
+                      transition: "all 0.2s ease",
+                      boxShadow: "0 2px 8px rgba(103, 232, 249, 0.3)"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(103, 232, 249, 0.4)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "0 2px 8px rgba(103, 232, 249, 0.3)";
+                    }}
+                  >
+                    Change Password
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

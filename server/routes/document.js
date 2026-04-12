@@ -3,26 +3,20 @@ const multer = require("multer");
 const verifyToken = require("../middleware/authMiddleware");
 const checkRole = require("../middleware/roleMiddleware");
 const db = require("../config/db");
-const fs = require("fs");
+const fs = require("fs").promises; // Changed to promises version
 const path = require("path");
 const { encryptData, decryptData } = require("../utils/crypto");
 const router = express.Router();
 const logActivity = require("../utils/logger");
 const { normalizeToHex } = require("../utils/helper");
+const { saveBackup, restoreBackup, deleteBackup } = require("../utils/backupService"); // ADD THIS
 
-// Storage config
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
-  }
-});
+// Memory storage instead of disk storage (better for encryption)
+const storage = multer.memoryStorage(); // CHANGED: Use memory storage
 
 // Multer config - 50MB limit
 const upload = multer({
-  storage,
+  storage, // CHANGED: Use memory storage
   limits: { 
     fileSize: 50 * 1024 * 1024
   }
@@ -44,67 +38,76 @@ router.post(
   verifyToken,
   checkRole(["admin", "officer"]),
   upload.single("file"),
-  (req, res) => {
-    if (!req.file) {
-      logActivity(req.user.id, "UPLOAD_DOCUMENT", "FAILED");
-      return res.status(400).json({ message: "No file uploaded" });
-    }
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        logActivity(req.user.id, "UPLOAD_DOCUMENT", "FAILED");
+        return res.status(400).json({ message: "No file uploaded" });
+      }
 
-    const allowedTypes = [
-      "application/pdf",
-      "image/jpeg",
-      "image/png",
-      "text/plain"
-    ];
+      const allowedTypes = [
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "text/plain"
+      ];
 
-    if (!allowedTypes.includes(req.file.mimetype)) {
-      fs.unlinkSync(req.file.path);
-      logActivity(req.user.id, "UPLOAD_DOCUMENT", "FAILED");
-      return res.status(400).json({
-        message: "File type not allowed. Allowed: PDF, JPG, PNG, TXT"
-      });
-    }
+      if (!allowedTypes.includes(req.file.mimetype)) {
+        logActivity(req.user.id, "UPLOAD_DOCUMENT", "FAILED");
+        return res.status(400).json({
+          message: "File type not allowed. Allowed: PDF, JPG, PNG, TXT"
+        });
+      }
 
-    const filePath = path.join(__dirname, "../uploads", req.file.filename);
-    const fileData = fs.readFileSync(filePath);
-    const fileSizeMB = (req.file.size / (1024 * 1024)).toFixed(2);
-    
-    console.log(`Uploading: ${req.file.originalname}, Size: ${fileSizeMB}MB, Type: ${req.file.mimetype}`);
-    
-    const encrypted = encryptData(fileData);
-    const backupEncrypted = encryptData(fileData);
+      const fileData = req.file.buffer;
+      const fileSizeMB = (req.file.size / (1024 * 1024)).toFixed(2);
+      
+      console.log(`Uploading: ${req.file.originalname}, Size: ${fileSizeMB}MB, Type: ${req.file.mimetype}`);
+      
+      const encrypted = encryptData(fileData);
+      
+      let backupPath = null;
+      if (process.env.BACKUP_ENABLED === 'true') {
+        backupPath = await saveBackup(null, fileData);
+        console.log("Backup saved to:", backupPath);
+      }
 
-    const sql = `
-      INSERT INTO documents 
-      (filename, encrypted_data, backup_data, encrypted_dek, iv, auth_tag, 
-       backup_key, backup_iv, backup_auth_tag, uploaded_by, file_size, mime_type)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    
-    db.query(
-      sql,
-      [
+      const sql = `
+        INSERT INTO documents 
+        (filename, encrypted_data, encrypted_dek, iv, auth_tag, 
+         backup_location, uploaded_by, file_size, mime_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      
+      // Use callback style (compatible with your existing db)
+      db.query(sql, [
         req.file.originalname,
         encrypted.encryptedData,
-        Buffer.from(backupEncrypted.encryptedData, 'hex'),
         encrypted.key,
         encrypted.iv,
         encrypted.authTag,
-        Buffer.from(backupEncrypted.key, 'hex'),
-        Buffer.from(backupEncrypted.iv, 'hex'),
-        Buffer.from(backupEncrypted.authTag, 'hex'),
+        backupPath,
         req.user.id,
         req.file.size,
         req.file.mimetype
-      ],
-      (err, result) => {
+      ], async (err, result) => {
         if (err) {
           console.error("Database error:", err);
           logActivity(req.user.id, "UPLOAD_DOCUMENT", "FAILED");
-          return res.status(500).json(err);
+          return res.status(500).json({ message: "Database error" });
         }
 
-        fs.unlinkSync(filePath);
+        // Update backup filename with actual document ID
+        if (backupPath && result.insertId) {
+          const newBackupPath = backupPath.replace('_null_', `_${result.insertId}_`);
+          try {
+            await fs.rename(backupPath, newBackupPath);
+            db.query("UPDATE documents SET backup_location = ? WHERE id = ?", [newBackupPath, result.insertId]);
+          } catch (renameErr) {
+            console.error("Failed to rename backup:", renameErr.message);
+          }
+        }
+
         logActivity(req.user.id, "UPLOAD_DOCUMENT", "SUCCESS");
 
         res.json({
@@ -115,8 +118,13 @@ router.post(
             type: req.file.mimetype
           }
         });
-      }
-    );
+      });
+
+    } catch (error) {
+      console.error("Upload error:", error);
+      logActivity(req.user.id, "UPLOAD_DOCUMENT", "FAILED");
+      res.status(500).json({ message: "Upload failed", error: error.message });
+    }
   }
 );
 
@@ -165,13 +173,13 @@ router.get(
   "/download/:id",
   verifyToken,
   checkRole(["admin", "officer", "viewer"]),
-  (req, res) => {
+  async (req, res) => { // CHANGED: Made async
     const docId = req.params.id;
     console.log("Download requested for ID:", docId);
     
     const sql = "SELECT * FROM documents WHERE id = ?";
 
-    db.query(sql, [docId], (err, results) => {
+    db.query(sql, [docId], async (err, results) => { // CHANGED: Added async
       if (err) {
         logActivity(req.user.id, "DOWNLOAD_DOCUMENT", "FAILED");
         return res.status(500).json(err);
@@ -184,10 +192,6 @@ router.get(
 
       const doc = results[0];
       console.log("Document:", doc.filename);
-      console.log("Primary data length:", doc.encrypted_data?.length);
-      console.log("Backup data length:", doc.backup_data?.length);
-
-      // ✅ REMOVED the early validation - let decryption attempt handle it
 
       // Try primary decryption first
       try {
@@ -215,40 +219,59 @@ router.get(
         
         logActivity(req.user.id, "TAMPER_DETECTED", "WARNING", `Document ID: ${docId}, File: ${doc.filename}`);
 
-        // Check if backup data exists before trying recovery
-        if (!doc.backup_data || doc.backup_data.length < 100) {
-          console.log("Backup data also invalid");
-          logActivity(req.user.id, "RECOVERY_FAILED", "CRITICAL", `No valid backup for document ID: ${docId}`);
-          return res.status(400).json({ message: "Document corrupted and no valid backup available" });
+        // NEW: Try file system backup first
+        if (doc.backup_location && process.env.BACKUP_ENABLED === 'true') {
+          try {
+            console.log("Attempting recovery from file system backup:", doc.backup_location);
+            const recoveredData = await restoreBackup(doc.backup_location);
+            
+            console.log("File system backup recovery SUCCESS!");
+            logActivity(req.user.id, "RECOVERY_SUCCESS", "SUCCESS", `Document recovered from external backup: ${doc.filename}`);
+
+            const contentType = doc.mime_type || "application/octet-stream";
+            res.setHeader("Content-Type", contentType);
+            res.setHeader(
+              "Content-Disposition",
+              `attachment; filename="${doc.filename}"`
+            );
+            return res.send(recoveredData);
+
+          } catch (backupErr) {
+            console.error("File system backup recovery FAILED:", backupErr.message);
+          }
         }
 
-        try {
-          const recoveredData = decryptData(
-            normalizeToHex(doc.backup_data),
-            normalizeToHex(doc.backup_key),
-            normalizeToHex(doc.backup_iv),
-            normalizeToHex(doc.backup_auth_tag)
-          );
+        // FALLBACK: Try legacy backup (for old documents that still have backup_data)
+        if (doc.backup_data && doc.backup_data.length > 0) {
+          try {
+            console.log("Attempting recovery from legacy backup in database");
+            const recoveredData = decryptData(
+              normalizeToHex(doc.backup_data),
+              normalizeToHex(doc.backup_key),
+              normalizeToHex(doc.backup_iv),
+              normalizeToHex(doc.backup_auth_tag)
+            );
 
-          console.log("Backup recovery SUCCESS!");
-          logActivity(req.user.id, "RECOVERY_SUCCESS", "SUCCESS", `Document recovered: ${doc.filename}`);
+            console.log("Legacy backup recovery SUCCESS!");
+            logActivity(req.user.id, "RECOVERY_SUCCESS_LEGACY", "SUCCESS", `Document recovered from legacy backup: ${doc.filename}`);
 
-          const contentType = doc.mime_type || "application/octet-stream";
-          res.setHeader("Content-Type", contentType);
-          res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="${doc.filename}"`
-          );
+            const contentType = doc.mime_type || "application/octet-stream";
+            res.setHeader("Content-Type", contentType);
+            res.setHeader(
+              "Content-Disposition",
+              `attachment; filename="${doc.filename}"`
+            );
+            return res.send(recoveredData);
 
-          return res.send(recoveredData);
-
-        } catch (recoveryErr) {
-          console.error("Backup recovery FAILED:", recoveryErr.message);
-          logActivity(req.user.id, "RECOVERY_FAILED", "CRITICAL", `Document ID: ${docId}`);
-          return res.status(400).json({
-            message: "Document corrupted and cannot be recovered"
-          });
+          } catch (legacyErr) {
+            console.error("Legacy backup recovery FAILED:", legacyErr.message);
+          }
         }
+
+        logActivity(req.user.id, "RECOVERY_FAILED", "CRITICAL", `Document ID: ${docId}`);
+        return res.status(400).json({
+          message: "Document corrupted and cannot be recovered"
+        });
       }
     });
   }
@@ -259,23 +282,43 @@ router.delete(
   "/:id",
   verifyToken,
   checkRole(["admin"]),
-  (req, res) => {
+  async (req, res) => { // CHANGED: Made async
     const docId = req.params.id;
-    const sql = "DELETE FROM documents WHERE id = ?";
+    
+    // NEW: Get backup location before deleting
+    const getBackupSql = "SELECT backup_location FROM documents WHERE id = ?";
+    db.query(getBackupSql, [docId], async (err, results) => {
+      if (err) return res.status(500).json(err);
+      
+      const backupLocation = results[0]?.backup_location;
+      
+      // Delete from database
+      const sql = "DELETE FROM documents WHERE id = ?";
+      db.query(sql, [docId], async (err, result) => {
+        if (err) {
+          logActivity(req.user.id, "DELETE_DOCUMENT", "FAILED");
+          return res.status(500).json(err);
+        }
 
-    db.query(sql, [docId], (err, result) => {
-      if (err) {
-        logActivity(req.user.id, "DELETE_DOCUMENT", "FAILED");
-        return res.status(500).json(err);
-      }
+        if (result.affectedRows === 0) {
+          logActivity(req.user.id, "DELETE_DOCUMENT", "FAILED");
+          return res.status(404).json({ message: "Document not found" });
+        }
 
-      if (result.affectedRows === 0) {
-        logActivity(req.user.id, "DELETE_DOCUMENT", "FAILED");
-        return res.status(404).json({ message: "Document not found" });
-      }
+        // NEW: Delete backup file if it exists
+        if (backupLocation && process.env.BACKUP_ENABLED === 'true') {
+          try {
+            await deleteBackup(backupLocation);
+            console.log("Backup file deleted:", backupLocation);
+          } catch (backupErr) {
+            console.error("Failed to delete backup file:", backupErr.message);
+            // Don't fail the request, just log the error
+          }
+        }
 
-      logActivity(req.user.id, "DELETE_DOCUMENT", "SUCCESS");
-      res.json({ message: "Document deleted successfully" });
+        logActivity(req.user.id, "DELETE_DOCUMENT", "SUCCESS");
+        res.json({ message: "Document deleted successfully" });
+      });
     });
   }
 );

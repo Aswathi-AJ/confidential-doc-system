@@ -24,14 +24,9 @@ function UploadPage() {
 
   const isMobile = windowWidth < 768;
 
-  const allowedFileTypes = [
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-    "text/plain"
-  ];
+  const allowedFileTypes = [];
 
-  const acceptTypes = ".pdf,.jpg,.jpeg,.png,.txt";
+  const acceptTypes = "*";
 
   const getFileExtension = (filename) => {
     return filename.split('.').pop().toUpperCase();
@@ -117,10 +112,8 @@ function UploadPage() {
       if (fileInput) fileInput.value = "";
       
       setTimeout(() => {
-        if (window.confirm("Document uploaded successfully! Go to Documents page?")) {
-          navigate("/documents");
-        }
-      }, 800);
+      navigate("/documents");
+    }, 1500);
       
     } catch (err) {
       setToast({ message: err.response?.data?.message || "Upload failed. Please try again.", type: "error" });

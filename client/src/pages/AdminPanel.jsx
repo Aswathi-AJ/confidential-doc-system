@@ -11,7 +11,13 @@ import {
   FaUserShield,
   FaUserTie,
   FaUser,
-  FaTimes
+  FaTimes,
+  FaUnlockAlt,
+  FaLock,
+  FaEye,
+  FaEyeSlash,
+  FaCheckCircle,
+  FaTimesCircle
 } from "react-icons/fa";
 import { RiGovernmentFill } from "react-icons/ri";
 
@@ -22,19 +28,45 @@ function AdminPanel() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [showResetModal, setShowResetModal] = useState(null); // { id, name }
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     role: "viewer"
   });
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resettingUser, setResettingUser] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [toast, setToast] = useState(null);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [user, setUser] = useState(null);
+  const [unlockingUser, setUnlockingUser] = useState(null);
 
   const isMobile = windowWidth < 768;
+
+  // Password strength states for reset modal
+  const [passwordStrength, setPasswordStrength] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    special: false
+  });
+
+  // Check password strength in real-time for reset modal
+  useEffect(() => {
+    setPasswordStrength({
+      length: resetPassword.length >= 8,
+      uppercase: /[A-Z]/.test(resetPassword),
+      lowercase: /[a-z]/.test(resetPassword),
+      number: /[0-9]/.test(resetPassword),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(resetPassword)
+    });
+  }, [resetPassword]);
 
   // Fetch users
   const fetchUsers = useCallback(async () => {
@@ -142,20 +174,76 @@ function AdminPanel() {
     }
   };
 
-  const handleResetPassword = async (userId, userName) => {
-    const newPassword = prompt("Enter new password (minimum 6 characters):");
-    if (!newPassword) return;
-    
-    if (newPassword.length < 6) {
-      setToast({ message: "Password must be at least 6 characters", type: "error" });
+  // Updated Reset Password function - opens modal instead of prompt
+  const handleResetPassword = (userId, userName) => {
+    setShowResetModal({ id: userId, name: userName });
+    setResetPassword("");
+    setResetConfirmPassword("");
+    setShowResetPassword(false);
+  };
+
+  // Confirm password reset with validation
+  const handleConfirmResetPassword = async () => {
+    // Validate password strength
+    if (resetPassword.length < 8) {
+      setToast({ message: "Password must be at least 8 characters long", type: "error" });
+      return;
+    }
+    if (!/[A-Z]/.test(resetPassword)) {
+      setToast({ message: "Password must contain at least one uppercase letter", type: "error" });
+      return;
+    }
+    if (!/[a-z]/.test(resetPassword)) {
+      setToast({ message: "Password must contain at least one lowercase letter", type: "error" });
+      return;
+    }
+    if (!/[0-9]/.test(resetPassword)) {
+      setToast({ message: "Password must contain at least one number", type: "error" });
+      return;
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(resetPassword)) {
+      setToast({ message: "Password must contain at least one special character (!@#$%^&* etc.)", type: "error" });
       return;
     }
 
+    if (resetPassword !== resetConfirmPassword) {
+      setToast({ message: "Passwords do not match", type: "error" });
+      return;
+    }
+
+    setResettingUser(true);
     try {
-      await API.post(`/admin/users/${userId}/reset-password`, { password: newPassword });
-      setToast({ message: `Password reset for "${userName}". New credentials sent via email.`, type: "success" });
+      await API.post(`/admin/users/${showResetModal.id}/reset-password`, { 
+        password: resetPassword 
+      });
+      setToast({ 
+        message: `Password reset for "${showResetModal.name}". User can now login with new password.`, 
+        type: "success" 
+      });
+      setShowResetModal(null);
+      setResetPassword("");
+      setResetConfirmPassword("");
     } catch (err) {
-      setToast({ message: err.response?.data?.message || "Failed to reset password", type: "error" });
+      setToast({ 
+        message: err.response?.data?.message || "Failed to reset password", 
+        type: "error" 
+      });
+    } finally {
+      setResettingUser(false);
+    }
+  };
+
+  // Unlock Account function
+  const handleUnlockAccount = async (email, userName) => {
+    setUnlockingUser(email);
+    try {
+      const response = await API.post("/auth/admin/unlock-account", { email });
+      setToast({ message: response.data.message || `Account "${userName}" unlocked successfully`, type: "success" });
+      fetchUsers();
+    } catch (err) {
+      setToast({ message: err.response?.data?.message || "Failed to unlock account", type: "error" });
+    } finally {
+      setUnlockingUser(null);
     }
   };
 
@@ -168,6 +256,20 @@ function AdminPanel() {
       default:
         return { bg: "rgba(148, 163, 184, 0.15)", color: "#94a3b8", icon: <FaUser size={11} /> };
     }
+  };
+
+  const getStrengthColor = () => {
+    const passed = Object.values(passwordStrength).filter(v => v === true).length;
+    if (passed <= 2) return "#ef4444";
+    if (passed <= 4) return "#f59e0b";
+    return "#10b981";
+  };
+
+  const getStrengthText = () => {
+    const passed = Object.values(passwordStrength).filter(v => v === true).length;
+    if (passed <= 2) return "Weak";
+    if (passed <= 4) return "Medium";
+    return "Strong";
   };
 
   if (isCheckingAuth) {
@@ -319,7 +421,7 @@ function AdminPanel() {
       width: "100%",
       borderCollapse: "collapse",
       background: "rgba(15, 15, 35, 0.6)",
-      minWidth: "800px",
+      minWidth: "900px",
     },
 
     th: {
@@ -367,6 +469,12 @@ function AdminPanel() {
       background: "rgba(167, 139, 250, 0.12)",
       color: "#c4b5fd",
       border: "1px solid rgba(167, 139, 250, 0.3)",
+    },
+
+    unlockBtn: {
+      background: "rgba(16, 185, 129, 0.12)",
+      color: "#10b981",
+      border: "1px solid rgba(16, 185, 129, 0.3)",
     },
 
     deleteBtn: {
@@ -527,6 +635,50 @@ function AdminPanel() {
       borderRadius: "12px",
       border: "1px solid rgba(167,139,250,0.15)",
     },
+
+    strengthContainer: {
+      marginTop: "8px",
+      padding: "8px",
+      background: "rgba(15,15,35,0.6)",
+      borderRadius: "8px",
+    },
+
+    strengthBar: {
+      height: "4px",
+      background: "#2a2a4a",
+      borderRadius: "2px",
+      overflow: "hidden",
+      marginBottom: "8px",
+    },
+
+    strengthFill: {
+      width: `${(Object.values(passwordStrength).filter(v => v === true).length / 5) * 100}%`,
+      height: "100%",
+      background: getStrengthColor(),
+      transition: "width 0.3s ease",
+    },
+
+    strengthText: {
+      fontSize: "10px",
+      color: getStrengthColor(),
+      textAlign: "right",
+      marginBottom: "8px",
+    },
+
+    rulesList: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "12px",
+      marginTop: "8px",
+    },
+
+    ruleItem: {
+      display: "flex",
+      alignItems: "center",
+      gap: "5px",
+      fontSize: "9px",
+      color: "#94a3b8",
+    },
   };
 
   return (
@@ -551,7 +703,7 @@ function AdminPanel() {
               <RiGovernmentFill size={18} color="#67e8f9" />
               <div>
                 <div style={styles.logo}>Confidential Document System</div>
-                <div style={{ fontSize: "9px", color: "#a5b4fc" }}>Admin Control Panel</div>
+                <div style={{ fontSize: "9px", color:"#a5b4fc" }}>Admin Control Panel</div>
               </div>
             </div>
 
@@ -633,12 +785,15 @@ function AdminPanel() {
                       <th style={styles.th}>Email</th>
                       <th style={styles.th}>Role</th>
                       <th style={styles.th}>Joined</th>
+                      <th style={styles.th}>Status</th>
                       <th style={styles.th}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((userItem) => {
                       const roleStyle = getRoleBadgeStyle(userItem.role);
+                      const isLocked = userItem.is_locked === 1;
+                      
                       return (
                         <tr key={userItem.id}>
                           <td style={styles.td}>{userItem.id}</td>
@@ -657,17 +812,66 @@ function AdminPanel() {
                             {userItem.created_at ? new Date(userItem.created_at).toLocaleDateString('en-IN') : "N/A"}
                           </td>
                           <td style={styles.td}>
+                            {isLocked ? (
+                              <span style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                padding: "3px 10px",
+                                borderRadius: "20px",
+                                fontSize: "10px",
+                                fontWeight: "600",
+                                background: "rgba(239, 68, 68, 0.15)",
+                                color: "#f87171"
+                              }}>
+                                <FaLock size={10} /> Locked
+                              </span>
+                            ) : (
+                              <span style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                padding: "3px 10px",
+                                borderRadius: "20px",
+                                fontSize: "10px",
+                                fontWeight: "600",
+                                background: "rgba(16, 185, 129, 0.15)",
+                                color: "#10b981"
+                              }}>
+                                <FaUnlockAlt size={10} /> Active
+                              </span>
+                            )}
+                          </td>
+                          <td style={styles.td}>
                             <button
                               onClick={() => handleResetPassword(userItem.id, userItem.name)}
                               style={{ ...styles.actionBtn, ...styles.resetBtn }}
+                              title="Reset Password"
                             >
                               <FaKey size={10} /> Reset PW
                             </button>
+                            
+                            {isLocked && (
+                              <button
+                                onClick={() => handleUnlockAccount(userItem.email, userItem.name)}
+                                disabled={unlockingUser === userItem.email}
+                                style={{ 
+                                  ...styles.actionBtn, 
+                                  ...styles.unlockBtn,
+                                  opacity: unlockingUser === userItem.email ? 0.6 : 1,
+                                  cursor: unlockingUser === userItem.email ? "not-allowed" : "pointer"
+                                }}
+                                title="Unlock Account (locked due to failed login attempts)"
+                              >
+                                <FaUnlockAlt size={10} /> {unlockingUser === userItem.email ? "Unlocking..." : "Unlock"}
+                              </button>
+                            )}
                             
                             {userItem.id !== user?.id && (
                               <button
                                 onClick={() => setShowDeleteConfirm({ id: userItem.id, name: userItem.name })}
                                 style={{ ...styles.actionBtn, ...styles.deleteBtn }}
+                                title="Delete User"
                               >
                                 <FaTrash size={10} /> Delete
                               </button>
@@ -688,6 +892,8 @@ function AdminPanel() {
                 <li>Officers can upload and manage documents</li>
                 <li>Viewers can only view documents</li>
                 <li>You cannot delete your own account</li>
+                <li>"Locked" status appears after 5 failed login attempts within 30 minutes</li>
+                <li>Click "Unlock" to immediately unlock a locked account</li>
               </ul>
             </div>
           </div>
@@ -776,6 +982,146 @@ function AdminPanel() {
                     onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
                   >
                     Create User
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Reset Password Modal */}
+        {showResetModal && (
+          <div style={styles.modalOverlay} onClick={() => setShowResetModal(null)}>
+            <div style={styles.modal} onClick={e => e.stopPropagation()}>
+              <div style={styles.modalHeader}>
+                <h3 style={styles.modalTitle}>Reset Password</h3>
+                <button 
+                  onClick={() => setShowResetModal(null)} 
+                  style={styles.closeButton}
+                  onMouseEnter={(e) => e.currentTarget.style.color = "#f0f9ff"}
+                  onMouseLeave={(e) => e.currentTarget.style.color = "#9ca3af"}
+                >
+                  <FaTimes size={isMobile ? 14 : 16} />
+                </button>
+              </div>
+              
+              <div style={{ marginBottom: "16px" }}>
+                <p style={{ color: "#a5b4fc", fontSize: "13px", marginBottom: "4px" }}>
+                  Resetting password for:
+                </p>
+                <p style={{ color: "#67e8f9", fontWeight: "600", fontSize: "14px" }}>
+                  {showResetModal.name}
+                </p>
+              </div>
+              
+              <form onSubmit={(e) => { e.preventDefault(); handleConfirmResetPassword(); }}>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>New Password</label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showResetPassword ? "text" : "password"}
+                      value={resetPassword}
+                      onChange={(e) => setResetPassword(e.target.value)}
+                      placeholder="Minimum 8 characters with uppercase, lowercase, number & special char"
+                      style={styles.formInput}
+                      required
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowResetPassword(!showResetPassword)}
+                      style={{
+                        position: "absolute",
+                        right: "10px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        color: "#a5b4fc",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {showResetPassword ? <FaEyeSlash size={12} /> : <FaEye size={12} />}
+                    </button>
+                  </div>
+
+                  {/* Password Strength Indicator */}
+                  {resetPassword && (
+                    <div style={styles.strengthContainer}>
+                      <div style={styles.strengthBar}>
+                        <div style={styles.strengthFill} />
+                      </div>
+                      <div style={styles.strengthText}>
+                        Password Strength: {getStrengthText()}
+                      </div>
+                      <div style={styles.rulesList}>
+                        <div style={{ ...styles.ruleItem, color: passwordStrength.length ? "#10b981" : "#94a3b8" }}>
+                          {passwordStrength.length ? <FaCheckCircle size={8} /> : <FaTimesCircle size={8} />}
+                          8+ characters
+                        </div>
+                        <div style={{ ...styles.ruleItem, color: passwordStrength.uppercase ? "#10b981" : "#94a3b8" }}>
+                          {passwordStrength.uppercase ? <FaCheckCircle size={8} /> : <FaTimesCircle size={8} />}
+                          Uppercase
+                        </div>
+                        <div style={{ ...styles.ruleItem, color: passwordStrength.lowercase ? "#10b981" : "#94a3b8" }}>
+                          {passwordStrength.lowercase ? <FaCheckCircle size={8} /> : <FaTimesCircle size={8} />}
+                          Lowercase
+                        </div>
+                        <div style={{ ...styles.ruleItem, color: passwordStrength.number ? "#10b981" : "#94a3b8" }}>
+                          {passwordStrength.number ? <FaCheckCircle size={8} /> : <FaTimesCircle size={8} />}
+                          Number
+                        </div>
+                        <div style={{ ...styles.ruleItem, color: passwordStrength.special ? "#10b981" : "#94a3b8" }}>
+                          {passwordStrength.special ? <FaCheckCircle size={8} /> : <FaTimesCircle size={8} />}
+                          Special char
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Confirm Password</label>
+                  <input
+                    type="password"
+                    value={resetConfirmPassword}
+                    onChange={(e) => setResetConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    style={styles.formInput}
+                    required
+                  />
+                </div>
+
+                <div style={styles.modalActions}>
+                  <button
+                    type="button"
+                    onClick={() => setShowResetModal(null)}
+                    style={styles.cancelButton}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(148,163,184,0.3)"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "rgba(148,163,184,0.2)"}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resettingUser}
+                    style={{
+                      ...styles.submitButton,
+                      opacity: resettingUser ? 0.6 : 1,
+                      cursor: resettingUser ? "not-allowed" : "pointer"
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!resettingUser) {
+                        e.currentTarget.style.opacity = "0.9";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!resettingUser) {
+                        e.currentTarget.style.opacity = "1";
+                      }
+                    }}
+                  >
+                    {resettingUser ? "Resetting..." : "Reset Password"}
                   </button>
                 </div>
               </form>

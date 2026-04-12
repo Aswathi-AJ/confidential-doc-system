@@ -15,6 +15,7 @@ import {
 } from "react-icons/fa";
 import { MdSecurity, MdVerified } from "react-icons/md";
 import { RiGovernmentFill } from "react-icons/ri";
+import { isValidEmail,  sanitizeInput } from "../utils/xssProtection";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -44,16 +45,31 @@ function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     
+    // ✅ XSS PROTECTION: Validate and sanitize inputs
     if (!email || !password) {
       setError("Please enter both email and password");
       return;
     }
     
+    // Validate email format
+    if (!isValidEmail(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    
+    // Sanitize email (remove any potential XSS)
+    const sanitizedEmail = sanitizeInput(email);
+    const sanitizedPassword = sanitizeInput(password);
+    
     setLoading(true);
     setError("");
     
     try {
-      const response = await API.post("/auth/login", { email, password });
+      // Send sanitized data to backend
+      const response = await API.post("/auth/login", { 
+        email: sanitizedEmail, 
+        password: sanitizedPassword 
+      });
       
       localStorage.setItem("token", response.data.token);
       
@@ -75,6 +91,7 @@ function Login() {
     }
   };
 
+  // Rest of your styles remain exactly the same...
   const styles = {
     container: {
       height: "100vh",
