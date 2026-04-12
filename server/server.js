@@ -13,13 +13,25 @@ const userManagementRoutes = require("./routes/userManagement");
 
 const app = express();
 
-// ================= SECURITY MIDDLEWARE =================
+// ================= CORS FIRST =================
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'CSRF-Token', 'X-Requested-With']
+}));
 
+// ================= OTHER MIDDLEWARE =================
 app.use(cookieParser());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
 
+// ================= CSRF PROTECTION =================
 const csrfProtection = csrf({ cookie: true });
 
-// CSRF Protection - Skip public and unlock endpoints
+// CSRF Protection - Skip public endpoints
 app.use('/api/', (req, res, next) => {
   const publicPaths = [
     '/auth/login',
@@ -27,7 +39,9 @@ app.use('/api/', (req, res, next) => {
     '/auth/forgot-password',
     '/auth/reset-password',
     '/auth/setup-account',
-    '/auth/admin/unlock-account'  // ✅ Add unlock endpoint here
+    '/auth/admin/unlock-account',
+    '/documents/upload',
+    '/csrf-token'
   ];
   
   if (publicPaths.some(path => req.path === path)) {
@@ -41,11 +55,12 @@ app.use('/api/', (req, res, next) => {
   return csrfProtection(req, res, next);
 });
 
+// CSRF token endpoint
 app.get('/api/csrf-token', csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 
-// Rate Limiting
+// ================= RATE LIMITING =================
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -65,7 +80,7 @@ const resetLimiter = rateLimit({
   message: { message: "Too many reset attempts. Please try again after an hour." },
 });
 
-// Security Headers
+// ================= SECURITY HEADERS =================
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -73,32 +88,20 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", "cdnjs.cloudflare.com"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'", "http://localhost:5000"],
+      connectSrc: ["'self'", "http://localhost:5000", "http://localhost:3000"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
     },
   },
 }));
 
-// CORS
-app.use(cors({
-  origin: 'http://localhost:3000',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'CSRF-Token', 'X-Requested-With']
-}));
-
-app.use(express.json());
-app.disable('x-powered-by');
-app.set('trust proxy', 1);
-
-// Rate limiting
+// Apply rate limiting
 app.use('/api/', generalLimiter);
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth/forgot-password', resetLimiter);
 app.use('/api/auth/reset-password', resetLimiter);
 
-// Routes
+// ================= ROUTES =================
 app.use("/api/documents", documentRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", userManagementRoutes);
@@ -123,8 +126,10 @@ app.listen(PORT, () => {
   console.log(" Security: Helmet enabled");
   console.log(" Security: Rate limiting enabled");
   console.log(" Security: CSRF Protection enabled");
-  console.log("Available endpoints:");
+  console.log(" CORS: Enabled for http://localhost:3000");
+  console.log("\n Available endpoints:");
   console.log("  POST   /api/auth/login");
   console.log("  POST   /api/auth/admin/unlock-account");
   console.log("  GET    /api/csrf-token");
+  console.log("  POST   /api/documents/upload");
 });

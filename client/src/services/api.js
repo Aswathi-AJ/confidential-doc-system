@@ -2,8 +2,17 @@ import axios from "axios";
 
 const API = axios.create({
   baseURL: "http://localhost:5000/api",
-  withCredentials: true
+  withCredentials: true,
+  timeout: 120000,
 });
+
+// CSRF token will be set after fetching
+let csrfToken = null;
+
+export const setCsrfToken = (token) => {
+  csrfToken = token;
+  API.defaults.headers.common["CSRF-Token"] = token;
+};
 
 // ================= XSS PROTECTION: Sanitize Input =================
 const sanitizeInput = (input) => {
@@ -20,9 +29,20 @@ const sanitizeInput = (input) => {
     .trim();
 };
 
-// Recursively sanitize objects and arrays
 const sanitizeData = (data) => {
   if (data === null || data === undefined) return data;
+  
+  if (data instanceof FormData) {
+    return data;
+  }
+  
+  if (data instanceof File) {
+    return data;
+  }
+  
+  if (data instanceof Blob) {
+    return data;
+  }
   
   if (typeof data === 'string') {
     return sanitizeInput(data);
@@ -48,17 +68,28 @@ const sanitizeData = (data) => {
 // ================= REQUEST INTERCEPTOR =================
 API.interceptors.request.use(
   async (config) => {
-    // Sanitize request data (prevent XSS)
+    // Add CSRF token to headers if available
+    if (csrfToken) {
+      config.headers["CSRF-Token"] = csrfToken;
+    }
+    
+    if (config.data instanceof FormData) {
+      const token = localStorage.getItem("token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      delete config.headers['Content-Type'];
+      return config;
+    }
+    
     if (config.data) {
       config.data = sanitizeData(config.data);
     }
     
-    // Sanitize URL parameters
     if (config.params) {
       config.params = sanitizeData(config.params);
     }
     
-    // Add token to headers
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -75,7 +106,7 @@ API.interceptors.request.use(
 // ================= RESPONSE INTERCEPTOR =================
 API.interceptors.response.use(
   (response) => {
-    if (response.data) {
+    if (response.data && typeof response.data === 'object' && !(response.data instanceof FormData)) {
       response.data = sanitizeData(response.data);
     }
     return response;
@@ -83,29 +114,12 @@ API.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
-    // Handle 401 Unauthorized (Token expired)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";
       return Promise.reject(error);
-    }
-    
-    // Handle 403 Forbidden
-    if (error.response?.status === 403) {
-      console.error("Access denied:", error.response?.data?.message);
-      alert(error.response?.data?.message || "You don't have permission to perform this action.");
-    }
-    
-    // Handle 423 Locked (Account locked)
-    if (error.response?.status === 423) {
-      alert(error.response?.data?.message || "Account temporarily locked. Please try again after 30 minutes.");
-    }
-    
-    // Handle 429 Too Many Requests
-    if (error.response?.status === 429) {
-      alert("Too many requests. Please try again later.");
     }
     
     return Promise.reject(error);

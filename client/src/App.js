@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+// client/src/App.js
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-
-
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import API from "./services/api";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import UploadPage from "./pages/UploadPage";
@@ -13,66 +13,90 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import SetupAccount from "./pages/SetupAccount";
 
-// Session Timeout Component (Wrapper)
+// Constants
+const SESSION_TIMEOUT = 30 * 60 * 1000;
+const WARNING_TIME = 60 * 1000;
 
+// Loading component
+function LoadingScreen() {
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "#0a0a14",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "#67e8f9"
+    }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: "40px", marginBottom: "16px", animation: "spin 1s linear infinite" }}>⏳</div>
+        <p>Initializing secure session...</p>
+      </div>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Session Timeout Component
 function SessionTimeout({ children }) {
   const navigate = useNavigate();
   const [showWarning, setShowWarning] = useState(false);
-  let inactivityTimer;
-  let warningTimer;
+  const inactivityTimerRef = useRef(null);
+  const warningTimerRef = useRef(null);
 
-  const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
-  const WARNING_TIME = 60 * 1000; // Show warning 1 minute before timeout
-
-  const resetTimers = () => {
-    clearTimeout(inactivityTimer);
-    clearTimeout(warningTimer);
-    setShowWarning(false);
-    
-    warningTimer = setTimeout(() => {
-      setShowWarning(true);
-    }, SESSION_TIMEOUT - WARNING_TIME);
-    
-    inactivityTimer = setTimeout(() => {
-      handleLogout();
-    }, SESSION_TIMEOUT);
-  };
-
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
-  };
+  }, [navigate]);
 
-  const stayLoggedIn = () => {
+  const resetTimers = useCallback(() => {
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+    
+    setShowWarning(false);
+    
+    warningTimerRef.current = setTimeout(() => {
+      setShowWarning(true);
+    }, SESSION_TIMEOUT - WARNING_TIME);
+    
+    inactivityTimerRef.current = setTimeout(() => {
+      handleLogout();
+    }, SESSION_TIMEOUT);
+  }, [handleLogout]);
+
+  const stayLoggedIn = useCallback(() => {
     resetTimers();
     setShowWarning(false);
-  };
+  }, [resetTimers]);
 
   useEffect(() => {
-  // Only start timer if user is logged in
-  const token = localStorage.getItem("token");
-  if (token) {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
     resetTimers();
     
-    // Events that reset the timer
     const events = ['mousemove', 'keypress', 'click', 'scroll'];
+    const handleUserActivity = () => resetTimers();
+    
     events.forEach(event => {
-      window.addEventListener(event, resetTimers);
+      window.addEventListener(event, handleUserActivity);
     });
     
     return () => {
-      clearTimeout(inactivityTimer);
-      clearTimeout(warningTimer);
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
       events.forEach(event => {
-        window.removeEventListener(event, resetTimers);
+        window.removeEventListener(event, handleUserActivity);
       });
     };
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []); // Disable the warning because resetTimers is stable
+  }, [resetTimers]);
 
-  // Warning Modal Styles
   const modalStyles = {
     overlay: {
       position: "fixed",
@@ -160,8 +184,32 @@ function SessionTimeout({ children }) {
 
   return children;
 }
+
 // Main App Component
 function App() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        const response = await API.get("/csrf-token");
+        const token = response.data.csrfToken;
+        API.defaults.headers.common["CSRF-Token"] = token;
+        console.log("CSRF token fetched successfully");
+      } catch (error) {
+        console.error("Failed to fetch CSRF token:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCsrfToken();
+  }, []);
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <BrowserRouter>
       <SessionTimeout>

@@ -24,9 +24,16 @@ function UploadPage() {
 
   const isMobile = windowWidth < 768;
 
-  const allowedFileTypes = [];
+  // Allowed file types
+  const allowedFileTypes = [
+    "application/pdf",
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "text/plain"
+  ];
 
-  const acceptTypes = "*";
+  const acceptTypes = ".pdf,.jpg,.jpeg,.png,.txt";
 
   const getFileExtension = (filename) => {
     return filename.split('.').pop().toUpperCase();
@@ -64,15 +71,27 @@ function UploadPage() {
       return;
     }
     
-    if (!allowedFileTypes.includes(file.type)) {
-      setToast({ message: "Only PDF, JPG, PNG, and TXT files are allowed", type: "error" });
+    // Validate by both MIME type and extension
+    const isValidMimeType = allowedFileTypes.includes(file.type);
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    const validExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'txt'];
+    const isValidExtension = validExtensions.includes(fileExtension);
+    
+    if (!isValidMimeType || !isValidExtension) {
+      setToast({ 
+        message: "Only PDF, JPG, PNG, and TXT files are allowed", 
+        type: "error" 
+      });
       setSelectedFile(null);
       return;
     }
     
-    const maxSize = 50 * 1024 * 1024;
+    const maxSize = 50 * 1024 * 1024; // 50MB
     if (file.size > maxSize) {
-      setToast({ message: `File size must be less than 50MB. Current: ${(file.size / (1024 * 1024)).toFixed(2)}MB`, type: "error" });
+      setToast({ 
+        message: `File size must be less than 50MB. Current: ${(file.size / (1024 * 1024)).toFixed(2)}MB`, 
+        type: "error" 
+      });
       setSelectedFile(null);
       return;
     }
@@ -100,10 +119,18 @@ function UploadPage() {
     const formData = new FormData();
     formData.append("file", selectedFile);
     
+    // Debug logging
+    console.log("Uploading file:", {
+      name: selectedFile.name,
+      type: selectedFile.type,
+      size: selectedFile.size
+    });
+    
     try {
-      await API.post("/documents/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // Don't set Content-Type header - let axios handle it
+      const response = await API.post("/documents/upload", formData);
+      
+      console.log("Upload success:", response.data);
       
       setToast({ message: "Document uploaded and encrypted successfully!", type: "success" });
       setSelectedFile(null);
@@ -112,11 +139,21 @@ function UploadPage() {
       if (fileInput) fileInput.value = "";
       
       setTimeout(() => {
-      navigate("/documents");
-    }, 1500);
+        navigate("/documents");
+      }, 1500);
       
     } catch (err) {
-      setToast({ message: err.response?.data?.message || "Upload failed. Please try again.", type: "error" });
+      console.error("Upload error:", err);
+      console.error("Error response:", err.response?.data);
+      
+      let errorMessage = "Upload failed. ";
+      if (err.response?.data?.message) {
+        errorMessage += err.response.data.message;
+      } else if (err.message) {
+        errorMessage += err.message;
+      }
+      
+      setToast({ message: errorMessage, type: "error" });
     } finally {
       setUploading(false);
     }
@@ -614,7 +651,7 @@ function UploadPage() {
           </div>
         </main>
 
-        <style jsx>{`
+        <style>{`
           @keyframes holoScan {
             0% { background-position: 0 0; }
             100% { background-position: 80px 80px; }
