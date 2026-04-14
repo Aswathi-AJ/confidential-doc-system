@@ -1,7 +1,21 @@
 import axios from "axios";
 
+const resolveApiBaseUrl = () => {
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+  }
+
+  return "http://localhost:5000/api";
+};
+
+export const API_BASE_URL = resolveApiBaseUrl();
+
 const API = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: API_BASE_URL,
   withCredentials: true,
   timeout: 120000,
 });

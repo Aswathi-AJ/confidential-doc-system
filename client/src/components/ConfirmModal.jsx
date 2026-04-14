@@ -72,7 +72,7 @@ function ConfirmModal({ title, message, onConfirm, onCancel }) {
           </button>
         </div>
       </div>
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

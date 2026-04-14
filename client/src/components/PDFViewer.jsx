@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import Toast from "./Toast";
+import { API_BASE_URL } from "../services/api";
 import { 
   FaLock, 
   FaShieldAlt, 
@@ -93,7 +94,7 @@ function PDFViewer({ docId, filename, onClose }) {
         setLoading(true);
         const token = localStorage.getItem("token");
 
-        const response = await fetch(`http://localhost:5000/api/documents/download/${docId}`, {
+        const response = await fetch(`${API_BASE_URL}/documents/download/${docId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -521,7 +522,7 @@ function PDFViewer({ docId, filename, onClose }) {
           </div>
         )}
 
-        <style jsx>{`
+        <style>{`
           @keyframes holoScan {
             0% { background-position: 0 0; }
             100% { background-position: 80px 80px; }

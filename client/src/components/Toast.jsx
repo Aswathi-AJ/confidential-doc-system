@@ -79,7 +79,7 @@ function Toast({ message, type, onClose, duration = 3000 }) {
           <FaTimes size={12} />
         </button>
       </div>
-      <style jsx>{`
+      <style>{`
         @keyframes slideInRight {
           from {
             transform: translateX(100%);

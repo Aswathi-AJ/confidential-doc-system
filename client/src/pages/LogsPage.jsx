@@ -699,7 +699,7 @@ header: {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         @keyframes holoScan {
           0% { background-position: 0 0; }
           100% { background-position: 80px 80px; }

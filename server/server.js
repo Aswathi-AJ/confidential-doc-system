@@ -13,9 +13,19 @@ const userManagementRoutes = require("./routes/userManagement");
 
 const app = express();
 
+const frontendOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 // ================= CORS FIRST =================
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: (origin, callback) => {
+    if (!origin || frontendOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS"));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'CSRF-Token', 'X-Requested-With']
@@ -88,7 +98,7 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", "cdnjs.cloudflare.com"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'", "http://localhost:5000", "http://localhost:3000"],
+      connectSrc: ["'self'", "http://localhost:5000", "http://localhost:3000", "http://192.168.0.104:5000", "http://192.168.0.104:3000"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
     },
@@ -121,12 +131,14 @@ app.get("/admin-only", verifyToken, checkRole(["admin"]), (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const HOST = process.env.HOST || "0.0.0.0";
+
+app.listen(PORT, HOST, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(" Security: Helmet enabled");
   console.log(" Security: Rate limiting enabled");
   console.log(" Security: CSRF Protection enabled");
-  console.log(" CORS: Enabled for http://localhost:3000"); 
+  console.log(` CORS: Enabled for ${frontendOrigins.join(", ")}`);
   console.log("Available endpoints:");
   console.log("  POST   /api/auth/login");
   console.log("  POST   /api/documents/upload");
