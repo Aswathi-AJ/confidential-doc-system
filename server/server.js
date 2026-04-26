@@ -108,7 +108,7 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", "cdnjs.cloudflare.com"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'", "http://localhost:5000", "http://localhost:3000", "http://10.227.136.226:5000", "http://10.227.136.226:3000"],
+      connectSrc: ["'self'", "*"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
     },
@@ -142,6 +142,17 @@ app.get("/admin-only", verifyToken, checkRole(["admin"]), (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || "0.0.0.0";
+
+const path = require("path");
+
+// Serve React build ONLY in production
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../client/build")));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../client/build/index.html"));
+  });
+}
 
 app.listen(PORT, HOST, () => {
   console.log(`Server running on port ${PORT}`);

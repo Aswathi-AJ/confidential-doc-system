@@ -5,10 +5,12 @@ const resolveApiBaseUrl = () => {
     return process.env.REACT_APP_API_URL;
   }
 
-  if (typeof window !== "undefined") {
-    return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+  // ✅ Production (Railway - same domain)
+  if (process.env.NODE_ENV === "production") {
+    return "/api";
   }
 
+  // ✅ Local
   return "http://localhost:5000/api";
 };
 
