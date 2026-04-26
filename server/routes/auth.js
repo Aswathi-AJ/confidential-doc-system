@@ -9,6 +9,33 @@ const { sendPasswordResetLink, sendSetupLinkEmail } = require("../utils/mailer")
 const logActivity = require("../utils/logger");
 const router = express.Router();
 
+// ================= RATE LIMIT GRACE PERIOD FOR UNLOCKED ACCOUNTS =================
+const recentlyUnlockedEmails = new Map(); // Map of email -> unlock timestamp
+const GRACE_PERIOD_MINUTES = 5; // 5 minutes to retry after unlock
+
+// Add email to grace period after admin unlock
+const addToGracePeriod = (email) => {
+  recentlyUnlockedEmails.set(email, Date.now());
+  // Auto-remove after grace period
+  setTimeout(() => {
+    recentlyUnlockedEmails.delete(email);
+  }, GRACE_PERIOD_MINUTES * 60 * 1000);
+};
+
+// Check if email is in grace period (skip rate limiter)
+const isInGracePeriod = (email) => {
+  if (!recentlyUnlockedEmails.has(email)) return false;
+  
+  const unlockedTime = recentlyUnlockedEmails.get(email);
+  const isActive = (Date.now() - unlockedTime) < (GRACE_PERIOD_MINUTES * 60 * 1000);
+  
+  if (!isActive) {
+    recentlyUnlockedEmails.delete(email);
+    return false;
+  }
+  return true;
+};
+
 // ================= ACCOUNT LOCKOUT HELPER FUNCTIONS =================
 
 const MAX_FAILED_ATTEMPTS = 5;  // Lock after 5 failed attempts
@@ -437,11 +464,14 @@ router.post("/admin/unlock-account", verifyToken, async (req, res) => {
       console.log("Error clearing attempts:", e.message);
     }
     
+    // ✅ ADD TO GRACE PERIOD - Skip rate limiter for 5 minutes after unlock (emergency access)
+    addToGracePeriod(email);
+    
     logActivity(req.user.id, "UNLOCK_ACCOUNT", "SUCCESS", `Unlocked account: ${email}`);
     
     res.json({ 
       success: true,
-      message: `Account "${email}" unlocked successfully.` 
+      message: `Account "${email}" unlocked successfully. User has 5 minutes to login without rate-limit restrictions.` 
     });
     
   } catch (error) {
@@ -450,4 +480,7 @@ router.post("/admin/unlock-account", verifyToken, async (req, res) => {
   }
 });
 
+// ================= EXPORT FUNCTIONS FOR SERVER USE =================
 module.exports = router;
+module.exports.isInGracePeriod = isInGracePeriod;
+module.exports.addToGracePeriod = addToGracePeriod;

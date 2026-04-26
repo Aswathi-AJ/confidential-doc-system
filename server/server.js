@@ -8,6 +8,7 @@ const cookieParser = require("cookie-parser");
 const csrf = require("csurf");
 const db = require("./config/db");
 const authRoutes = require("./routes/auth");
+const { isInGracePeriod } = require("./routes/auth");
 const documentRoutes = require("./routes/document");
 const userManagementRoutes = require("./routes/userManagement");
 
@@ -82,6 +83,15 @@ const loginLimiter = rateLimit({
   max: 5,
   message: { message: "Too many login attempts. Please try again after 15 minutes." },
   skipSuccessfulRequests: true,
+  skip: (req, res) => {
+    // ✅ SKIP RATE LIMIT FOR ACCOUNTS IN GRACE PERIOD (recently unlocked by admin)
+    const email = req.body?.email;
+    if (email && isInGracePeriod(email)) {
+      console.log(`[RATE LIMIT SKIP] Email ${email} is in grace period - allowing login attempt`);
+      return true;
+    }
+    return false;
+  }
 });
 
 const resetLimiter = rateLimit({
@@ -98,7 +108,7 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", "cdnjs.cloudflare.com"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'", "http://localhost:5000", "http://localhost:3000", "http://192.168.0.104:5000", "http://192.168.0.104:3000"],
+      connectSrc: ["'self'", "http://localhost:5000", "http://localhost:3000", "http://10.227.136.226:5000", "http://10.227.136.226:3000"],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
     },
