@@ -102,7 +102,7 @@ function DocumentsPage() {
           fetchDocuments();
           setToast({ message: `"${docName}" deleted successfully`, type: "success" });
         } catch (err) {
-          setToast({ message: err.response?.data?.message || "Failed to delete document", type: "error" });
+          setToast({ message: err.response?.data?.message || err.message || "Failed to delete document", type: "error" });
         }
       }
     });

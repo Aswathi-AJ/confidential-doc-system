@@ -288,7 +288,7 @@ router.delete(
     // NEW: Get backup location before deleting
     const getBackupSql = "SELECT backup_location FROM documents WHERE id = ?";
     db.query(getBackupSql, [docId], async (err, results) => {
-      if (err) return res.status(500).json(err);
+      if (err) return res.status(500).json({ message: err.message || "Server error" });
       
       const backupLocation = results[0]?.backup_location;
       
@@ -297,7 +297,7 @@ router.delete(
       db.query(sql, [docId], async (err, result) => {
         if (err) {
           logActivity(req.user.id, "DELETE_DOCUMENT", "FAILED");
-          return res.status(500).json(err);
+          return res.status(500).json({ message: err.message || "Database error" });
         }
 
         if (result.affectedRows === 0) {

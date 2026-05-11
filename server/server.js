@@ -15,7 +15,7 @@ const userManagementRoutes = require("./routes/userManagement");
 
 const app = express();
 
-const frontendOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || "http://localhost:3000")
+const frontendOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || "http://localhost:3000,http://192.168.0.102:3000")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
