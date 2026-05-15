@@ -162,7 +162,7 @@ router.get(
     }
 
     db.query(sql, values, (err, results) => {
-      if (err) return res.status(500).json(err);
+      if (err) return res.status(500).json({ message: err.message || "Server error" });
       res.json(results);
     });
   }

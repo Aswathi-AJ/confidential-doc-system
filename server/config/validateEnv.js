@@ -1,5 +1,10 @@
 // Check required environment variables on startup
 const requiredEnvVars = [
+  'PORT',
+  'DB_HOST',
+  'DB_USER',
+  'DB_PASSWORD',
+  'DB_NAME',
   'JWT_SECRET',
   'EMAIL_USER',
   'EMAIL_PASS',
